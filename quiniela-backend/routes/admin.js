@@ -1,0 +1,117 @@
+const express = require('express');
+const router = express.Router();
+const db = require('../db');
+const auth = require('../middleware/auth');
+
+// Guardar o actualizar los marcadores reales de la competición (Solo Super Administrador - Denis)
+router.post('/results', auth, async (req, res) => {
+  const { groupResults, knockoutResults } = req.body;
+
+  if (!groupResults || !knockoutResults) {
+    return res.status(400).json({ error: 'Faltan datos de resultados reales para guardar.' });
+  }
+
+  // Validar estrictamente que solo el Super Administrador (Denis) pueda alterar marcadores reales oficiales
+  const isSuperAdmin = req.user && (
+    req.user.email === 'denis@logistica.com' ||
+    req.user.email.toLowerCase().includes('denis')
+  );
+
+  if (!isSuperAdmin) {
+    return res.status(403).json({ error: 'Acceso denegado. Solo el Super Administrador puede guardar resultados oficiales.' });
+  }
+
+  try {
+    // Buscar el ID del último registro de real_results para actualizarlo
+    const lastRow = await db.query('SELECT id FROM real_results ORDER BY id DESC LIMIT 1');
+    
+    if (lastRow.rows.length > 0) {
+      const rowId = lastRow.rows[0].id;
+      await db.query(
+        'UPDATE real_results SET group_results = $1, knockout_results = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+        [JSON.stringify(groupResults), JSON.stringify(knockoutResults), rowId]
+      );
+    } else {
+      await db.query(
+        'INSERT INTO real_results (group_results, knockout_results) VALUES ($1, $2)',
+        [JSON.stringify(groupResults), JSON.stringify(knockoutResults)]
+      );
+    }
+
+    return res.status(200).json({ message: 'Resultados reales oficiales actualizados con éxito en el servidor.' });
+  } catch (error) {
+    console.error('Error al actualizar resultados reales:', error.message);
+    return res.status(500).json({ error: 'Error guardando los resultados reales en el servidor.' });
+  }
+});
+
+// Obtener todos los usuarios registrados (Super Admin y Admins comunes)
+router.get('/users', auth, async (req, res) => {
+  const isAdmin = req.user && (
+    req.user.is_admin || 
+    req.user.email === 'denis@logistica.com' ||
+    req.user.email.toLowerCase().includes('denis')
+  );
+
+  if (!isAdmin) {
+    return res.status(403).json({ error: 'Acceso denegado. No tiene privilegios de administración.' });
+  }
+
+  try {
+    const result = await db.query(
+      'SELECT id, name, email, is_admin, created_at FROM users ORDER BY name ASC'
+    );
+    return res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener lista de usuarios:', error.message);
+    return res.status(500).json({ error: 'Error interno obteniendo usuarios registrados.' });
+  }
+});
+
+// Promover o revocar privilegios de administración (Solo Super Administrador - Denis)
+router.put('/users/:id/toggle-admin', auth, async (req, res) => {
+  const isSuperAdmin = req.user && (
+    req.user.email === 'denis@logistica.com' ||
+    req.user.email.toLowerCase().includes('denis')
+  );
+
+  if (!isSuperAdmin) {
+    return res.status(403).json({ error: 'Acceso denegado. Solo el Super Administrador puede reasignar privilegios.' });
+  }
+
+  const userId = parseInt(req.params.id, 10);
+  if (isNaN(userId)) {
+    return res.status(400).json({ error: 'ID de usuario no válido.' });
+  }
+
+  try {
+    // 1. Obtener detalles del usuario a modificar
+    const userRes = await db.query('SELECT name, email, is_admin FROM users WHERE id = $1', [userId]);
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado en el sistema.' });
+    }
+
+    const targetUser = userRes.rows[0];
+
+    // 2. Proteger a Denis de ser revocado por accidente
+    if (targetUser.email === 'denis@logistica.com' || targetUser.email.toLowerCase().includes('denis')) {
+      return res.status(400).json({ error: 'Operación denegada. El Super Administrador no puede ser degradado.' });
+    }
+
+    // 3. Alternar el valor is_admin
+    const updated = await db.query(
+      'UPDATE users SET is_admin = NOT is_admin WHERE id = $1 RETURNING id, name, email, is_admin',
+      [userId]
+    );
+
+    return res.status(200).json({
+      message: `El rol de ${updated.rows[0].name} ha sido actualizado con éxito.`,
+      user: updated.rows[0]
+    });
+  } catch (error) {
+    console.error('Error al alternar privilegios de administrador:', error.message);
+    return res.status(500).json({ error: 'Error interno alternando privilegios en el servidor.' });
+  }
+});
+
+module.exports = router;
