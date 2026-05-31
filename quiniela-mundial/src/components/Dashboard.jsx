@@ -108,7 +108,7 @@ export default function Dashboard({
               </span>
             ) : (
               <><span className="gradient-text" style={{ cursor: 'pointer', borderBottom: '1px dashed var(--color-primary)', position: 'relative' }} onClick={startEditing} title="Haz clic para cambiar tu nombre">{currentUser.name.trim()}!</span><span style={{ fontSize: '0.85rem', verticalAlign: 'middle', opacity: 0.7, marginLeft: '0.35rem', cursor: 'pointer' }} onClick={startEditing}>✏️</span></>
-            )}{' '}Bienvenido a tu Quiniela Mundial
+            )}{' '}Bienvenido a la Quiniela de Grupo Giraud
           </h2>
           <p>
             Pronostica todos los encuentros de la Copa del Mundo. Rellena los marcadores de la Fase de Grupos 

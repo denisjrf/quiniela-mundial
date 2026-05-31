@@ -22,19 +22,19 @@ const transporter = nodemailer.createTransport({
  */
 const sendVerificationEmail = async (email, name, code) => {
   const mailOptions = {
-    from: `"Quiniela Mundial 2026" <${process.env.SMTP_USER || 'no-reply@servis-web.com'}>`,
+    from: `"Quiniela Grupo Giraud 2026" <${process.env.SMTP_USER || 'no-reply@servis-web.com'}>`,
     to: email,
-    subject: '⚽ Código de Verificación - Quiniela Mundial 2026',
+    subject: '⚽ Código de Verificación - Quiniela Grupo Giraud 2026',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1a202c; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
         <div style="text-align: center; border-bottom: 2px solid #00ff87; padding-bottom: 20px; margin-bottom: 20px;">
-          <h1 style="color: #0f172a; margin: 0; font-size: 24px;">⚽ Quiniela Mundial 2026</h1>
+          <h1 style="color: #0f172a; margin: 0; font-size: 24px;">⚽ Quiniela Grupo Giraud 2026</h1>
           <p style="color: #64748b; font-size: 14px; margin: 5px 0 0 0; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Verificación de Cuenta</p>
         </div>
         
         <h2 style="color: #0f172a; font-size: 18px; margin-top: 0;">¡Hola, ${name}!</h2>
         <p style="font-size: 15px; line-height: 1.6; color: #334155; margin-bottom: 20px;">
-          Gracias por registrarte en la <strong>Quiniela del Mundial Premium 2026</strong>. Para poder activar tu cuenta, iniciar sesión y comenzar a colocar tus pronósticos, ingresa el siguiente código de verificación en la aplicación:
+          Gracias por registrarte en la <strong>Quiniela de Grupo Giraud Premium 2026</strong>. Para poder activar tu cuenta, iniciar sesión y comenzar a colocar tus pronósticos, ingresa el siguiente código de verificación en la aplicación:
         </p>
         
         <div style="text-align: center; margin: 30px 0; padding: 18px; background-color: #f8fafc; border-radius: 10px; border: 1px dashed #00bb66;">
@@ -46,7 +46,7 @@ const sendVerificationEmail = async (email, name, code) => {
         </p>
         
         <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8;">
-          <p style="margin: 0; font-weight: bold;">Quiniela del Mundial Premium © 2026</p>
+          <p style="margin: 0; font-weight: bold;">Quiniela Grupo Giraud Premium © 2026</p>
           <p style="margin: 4px 0 0 0;">Desarrollado y desplegado de forma segura en servidor corporativo PostgreSQL.</p>
         </div>
       </div>

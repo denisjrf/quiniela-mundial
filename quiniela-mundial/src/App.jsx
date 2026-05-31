@@ -840,8 +840,12 @@ export default function App() {
         <div className="glass-card fade-in" style={{ maxWidth: '480px', width: '100%', padding: '2.5rem 2rem', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)' }}>
           
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <span className="logo-icon" style={{ fontSize: '3rem', display: 'block', marginBottom: '0.5rem' }}>🏆</span>
-            <h1 className="gradient-text" style={{ fontSize: '1.85rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
+            <img 
+              src={theme === 'light' ? `${import.meta.env.BASE_URL}logo_light_theme.png` : `${import.meta.env.BASE_URL}logo_dark_theme.png`} 
+              alt="Grupo Giraud" 
+              style={{ width: '100%', maxWidth: '280px', height: 'auto', display: 'block', margin: '0 auto 1.25rem auto' }} 
+            />
+            <h1 className="gradient-text" style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
               QUINIELA MUNDIAL
             </h1>
           </div>
@@ -979,10 +983,14 @@ export default function App() {
       </div>
       {/* Encabezado Principal */}
       <header>
-        <div className="logo-section">
-          <span className="logo-icon">🏆</span>
-          <div>
-            <h1 className="gradient-text">QUINIELA MUNDIAL</h1>
+        <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <img 
+            src={theme === 'light' ? `${import.meta.env.BASE_URL}logo_light_theme.png` : `${import.meta.env.BASE_URL}logo_dark_theme.png`} 
+            alt="Grupo Giraud" 
+            style={{ height: '35px', width: 'auto', objectFit: 'contain' }} 
+          />
+          <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1rem', display: 'flex', alignItems: 'center' }}>
+            <h1 className="gradient-text" style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>QUINIELA MUNDIAL</h1>
           </div>
         </div>
 
@@ -1206,7 +1214,7 @@ export default function App() {
 
       {/* Pie de página */}
       <footer style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-        <p>Quiniela del Mundial Premium © 2026. Conectada a Servidor PostgreSQL corporativo. ⚽🚀📦</p>
+        <p>Quiniela Grupo Giraud Premium © 2026. Conectada a Servidor PostgreSQL corporativo. ⚽🚀📦</p>
       </footer>
 
       {/* Modal Premium de Confirmación de Descarte */}
