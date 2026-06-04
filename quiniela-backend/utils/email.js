@@ -50,7 +50,8 @@ const sendVerificationEmail = async (email, name, code) => {
           <p style="margin: 4px 0 0 0;">Desarrollado y desplegado de forma segura en servidor corporativo PostgreSQL.</p>
         </div>
       </div>
-    `
+    `,
+    text: `Hola, ${name}!\n\nGracias por registrarte en la Quiniela de Grupo Giraud Premium 2026.\n\nPara poder activar tu cuenta, iniciar sesión y comenzar a colocar tus pronósticos, ingresa el siguiente código de verificación en la aplicación:\n\nCódigo: ${code}\n\nSi no has iniciado este proceso, ignora este correo.\n\nQuiniela Grupo Giraud Premium © 2026`
   };
 
   return transporter.sendMail(mailOptions);

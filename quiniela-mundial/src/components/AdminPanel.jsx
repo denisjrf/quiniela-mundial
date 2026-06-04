@@ -278,12 +278,14 @@ export default function AdminPanel({
 
                     <div className="admin-match-row">
                       <div className="admin-team-info">
-                        <img 
-                          src={`https://flagcdn.com/w40/${t1.flag}.png`} 
-                          alt={t1.name} 
-                          className="team-flag-img" 
-                        />
-                        <span>{t1.name}</span>
+                        {t1 && (
+                          <img 
+                            src={`https://flagcdn.com/w40/${t1.flag}.png`} 
+                            alt={t1.name} 
+                            className="team-flag-img" 
+                          />
+                        )}
+                        <span>{t1 ? t1.name : match.team1}</span>
                       </div>
                       <input
                         type="text"
@@ -298,12 +300,14 @@ export default function AdminPanel({
 
                     <div className="admin-match-row">
                       <div className="admin-team-info">
-                        <img 
-                          src={`https://flagcdn.com/w40/${t2.flag}.png`} 
-                          alt={t2.name} 
-                          className="team-flag-img" 
-                        />
-                        <span>{t2.name}</span>
+                        {t2 && (
+                          <img 
+                            src={`https://flagcdn.com/w40/${t2.flag}.png`} 
+                            alt={t2.name} 
+                            className="team-flag-img" 
+                          />
+                        )}
+                        <span>{t2 ? t2.name : match.team2}</span>
                       </div>
                       <input
                         type="text"

@@ -1223,50 +1223,50 @@ export default function App() {
                     {leaderboard
                       .filter(row => (row.id_tipo_usuario || 2) === (user?.id_tipo_usuario || 2))
                       .map((row, index) => {
-                      const isRank1 = index === 0;
-                      const isRank2 = index === 1;
-                      const isRank3 = index === 2;
-                      const isCurrentUser = row.id === user?.id;
+                        const isRank1 = index === 0;
+                        const isRank2 = index === 1;
+                        const isRank3 = index === 2;
+                        const isCurrentUser = row.id === user?.id;
 
-                      return (
-                        <div
-                          key={row.id}
-                          className={`leaderboard-row ${isCurrentUser ? 'highlight' : ''}`}
-                          style={{ borderLeft: isCurrentUser ? '3px solid var(--color-primary)' : '1px solid var(--border-color)' }}
-                        >
-                          <div className={`rank-cell ${isRank1 ? 'top-1' : isRank2 ? 'top-2' : isRank3 ? 'top-3' : ''}`}>
-                            {isRank1 ? '🥇' : isRank2 ? '🥈' : isRank3 ? '🥉' : `${index + 1}`}
-                          </div>
-
-                          <div className="name-cell">
-                            <div className="profile-avatar" style={{
-                              width: '24px',
-                              height: '24px',
-                              fontSize: '0.75rem',
-                              background: isCurrentUser
-                                ? 'linear-gradient(135deg, var(--color-primary), var(--color-info))'
-                                : 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.1))'
-                            }}>
-                              {row.name.charAt(0)}
+                        return (
+                          <div
+                            key={row.id}
+                            className={`leaderboard-row ${isCurrentUser ? 'highlight' : ''}`}
+                            style={{ borderLeft: isCurrentUser ? '3px solid var(--color-primary)' : '1px solid var(--border-color)' }}
+                          >
+                            <div className={`rank-cell ${isRank1 ? 'top-1' : isRank2 ? 'top-2' : isRank3 ? 'top-3' : ''}`}>
+                              {isRank1 ? '🥇' : isRank2 ? '🥈' : isRank3 ? '🥉' : `${index + 1}`}
                             </div>
-                            <div>
-                              <span style={{ fontWeight: isCurrentUser ? '800' : '600' }}>{row.name}</span>
-                              {isCurrentUser && <span style={{ marginLeft: '0.4rem', fontSize: '0.6rem', color: 'var(--color-primary)', fontWeight: '700' }}>(Tú)</span>}
+
+                            <div className="name-cell">
+                              <div className="profile-avatar" style={{
+                                width: '24px',
+                                height: '24px',
+                                fontSize: '0.75rem',
+                                background: isCurrentUser
+                                  ? 'linear-gradient(135deg, var(--color-primary), var(--color-info))'
+                                  : 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.1))'
+                              }}>
+                                {row.name.charAt(0)}
+                              </div>
+                              <div>
+                                <span style={{ fontWeight: isCurrentUser ? '800' : '600' }}>{row.name}</span>
+                                {isCurrentUser && <span style={{ marginLeft: '0.4rem', fontSize: '0.6rem', color: 'var(--color-primary)', fontWeight: '700' }}>(Tú)</span>}
+                              </div>
                             </div>
+
+                            <div>{row.predictionsCount} / 104</div>
+
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                              <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>{row.exactHits}</span>
+                              {' / '}
+                              <span style={{ color: 'var(--color-info)', fontWeight: 600 }}>{row.outcomeHits}</span>
+                            </div>
+
+                            <div className="points-cell">{row.points}</div>
                           </div>
-
-                          <div>{row.predictionsCount} / 104</div>
-
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>{row.exactHits}</span>
-                            {' / '}
-                            <span style={{ color: 'var(--color-info)', fontWeight: 600 }}>{row.outcomeHits}</span>
-                          </div>
-
-                          <div className="points-cell">{row.points}</div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                   </div>
                 </div>
               </div>
@@ -1344,7 +1344,7 @@ export default function App() {
 
       {/* Pie de página */}
       <footer style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-        <p>Quiniela Grupo Giraud Premium © 2026. Conectada a Servidor PostgreSQL corporativo. ⚽🚀📦</p>
+        <p>Quiniela Grupo Giraud Premium © 2026. ⚽🚀📦</p>
       </footer>
 
       {/* Modal Premium de Confirmación de Descarte */}
