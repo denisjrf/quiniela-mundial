@@ -7,7 +7,7 @@ const { sendVerificationEmail } = require('../utils/email');
 
 // Registro de Usuario
 router.post('/register', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, id_tipo_usuario } = req.body;
 
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Por favor, rellene todos los campos.' });
@@ -26,9 +26,10 @@ router.post('/register', async (req, res) => {
 
     // 3. Guardar usuario con código de verificación
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const userType = (id_tipo_usuario === 1 || id_tipo_usuario === 2) ? id_tipo_usuario : 2;
     const newUser = await db.query(
-      'INSERT INTO users (name, email, password_hash, verification_code, is_verified) VALUES ($1, $2, $3, $4, false) RETURNING id, name, email',
-      [name.trim(), email.toLowerCase().trim(), passwordHash, verificationCode]
+      'INSERT INTO users (name, email, password_hash, verification_code, is_verified, id_tipo_usuario) VALUES ($1, $2, $3, $4, false, $5) RETURNING id, name, email, id_tipo_usuario',
+      [name.trim(), email.toLowerCase().trim(), passwordHash, verificationCode, userType]
     );
 
     const userId = newUser.rows[0].id;
@@ -93,7 +94,7 @@ router.post('/login', async (req, res) => {
 
     // 3. Crear y firmar JWT
     const token = jwt.sign(
-      { id: user.id, name: user.name, email: user.email, is_admin: user.is_admin },
+      { id: user.id, name: user.name, email: user.email, is_admin: user.is_admin, id_tipo_usuario: user.id_tipo_usuario },
       process.env.JWT_SECRET,
       { expiresIn: '7d' } // Token expira en 7 días
     );
@@ -101,7 +102,7 @@ router.post('/login', async (req, res) => {
     return res.status(200).json({
       message: 'Sesión iniciada con éxito.',
       token,
-      user: { id: user.id, name: user.name, email: user.email, is_admin: user.is_admin }
+      user: { id: user.id, name: user.name, email: user.email, is_admin: user.is_admin, id_tipo_usuario: user.id_tipo_usuario }
     });
   } catch (error) {
     console.error('Error en login:', error.message);

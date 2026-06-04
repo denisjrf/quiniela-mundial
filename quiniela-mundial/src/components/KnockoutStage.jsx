@@ -6,12 +6,15 @@ export default function KnockoutStage({
   teams, 
   onKnockoutScoreChange, 
   onSelectWinner,
-  groupWinnersReady
+  groupWinnersReady,
+  faseLocked = false
 }) {
   const [showChampModal, setShowChampModal] = useState(false);
   const [lastChampion, setLastChampion] = useState(null);
 
   const isMatchLocked = (matchId) => {
+    if (faseLocked) return true;
+    if (!groupWinnersReady) return true;
     if (!matchId) return false;
     const kickoff = getMatchKickoff(matchId);
     return Date.now() > (new Date(kickoff).getTime() - 30 * 60 * 1000);
@@ -78,13 +81,70 @@ export default function KnockoutStage({
       <div className="bracket-wrapper">
         <div className="bracket-container">
           
+          {/* 0. Dieciseisavos de Final (16vos) */}
+          <div className="bracket-round">
+            <div className="bracket-round-title">16vos de Final</div>
+            <div className="bracket-matches-list">
+              {(knockoutStage.roundOf32 || []).map(match => {
+                const p1 = match.type.split('_')[0]; // ej '1A'
+                const p2 = match.type.split('_')[1]; // ej '3C/D/E'
+                const isWinner1 = match.winner === match.team1 && match.team1 !== null;
+                const isWinner2 = match.winner === match.team2 && match.team2 !== null;
+                const locked = isMatchLocked(match.id);
+
+                return (
+                  <div key={match.id} className={`bracket-match-card ${locked ? 'locked' : ''}`}>
+                    <div className="bracket-match-header">
+                      <span>{match.date} {locked && '🔒'}</span>
+                      {match.team1Score === match.team2Score && match.team1Score !== '' && !locked && (
+                        <span style={{ color: 'var(--color-accent)' }}>Clic en ganador</span>
+                      )}
+                    </div>
+                    {/* Equipo 1 */}
+                    <div 
+                      className={`bracket-team-row ${isWinner1 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
+                      onClick={() => handleWinnerClick('roundOf32', match, match.team1)}
+                    >
+                      {getTeamName(match.team1, p1)}
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className={`bracket-score-input ${locked ? 'disabled' : ''}`}
+                        value={match.team1Score}
+                        onChange={(e) => handleScoreInput('roundOf32', match.id, 'team1Score', e.target.value)}
+                        maxLength={2}
+                        disabled={locked || !match.team1}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    {/* Equipo 2 */}
+                    <div 
+                      className={`bracket-team-row ${isWinner2 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
+                      onClick={() => handleWinnerClick('roundOf32', match, match.team2)}
+                    >
+                      {getTeamName(match.team2, p2)}
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className={`bracket-score-input ${locked ? 'disabled' : ''}`}
+                        value={match.team2Score}
+                        onChange={(e) => handleScoreInput('roundOf32', match.id, 'team2Score', e.target.value)}
+                        maxLength={2}
+                        disabled={locked || !match.team2}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* 1. Octavos de Final */}
           <div className="bracket-round">
             <div className="bracket-round-title">Octavos de Final</div>
             <div className="bracket-matches-list">
-              {knockoutStage.roundOf16.map(match => {
-                const p1 = match.type.split('_')[0]; // ej '1A'
-                const p2 = match.type.split('_')[1]; // ej '2B'
+              {(knockoutStage.roundOf16 || []).map(match => {
                 const isWinner1 = match.winner === match.team1 && match.team1 !== null;
                 const isWinner2 = match.winner === match.team2 && match.team2 !== null;
                 const locked = isMatchLocked(match.id);
@@ -102,7 +162,7 @@ export default function KnockoutStage({
                       className={`bracket-team-row ${isWinner1 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
                       onClick={() => handleWinnerClick('roundOf16', match, match.team1)}
                     >
-                      {getTeamName(match.team1, `1º Grupo ${p1.charAt(1)}`)}
+                      {getTeamName(match.team1, 'Ganador 16vos')}
                       <input
                         type="text"
                         inputMode="numeric"
@@ -119,7 +179,7 @@ export default function KnockoutStage({
                       className={`bracket-team-row ${isWinner2 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
                       onClick={() => handleWinnerClick('roundOf16', match, match.team2)}
                     >
-                      {getTeamName(match.team2, `2º Grupo ${p2.slice(1)}`)}
+                      {getTeamName(match.team2, 'Ganador 16vos')}
                       <input
                         type="text"
                         inputMode="numeric"

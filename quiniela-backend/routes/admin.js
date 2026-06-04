@@ -58,9 +58,12 @@ router.get('/users', auth, async (req, res) => {
   }
 
   try {
-    const result = await db.query(
-      'SELECT id, name, email, is_admin, created_at FROM users ORDER BY name ASC'
-    );
+    const result = await db.query(`
+      SELECT u.id, u.name, u.email, u.is_admin, u.created_at, u.id_tipo_usuario, tu.nombre as tipo_usuario_nombre
+      FROM users u
+      LEFT JOIN tipo_usuario tu ON u.id_tipo_usuario = tu.id
+      ORDER BY u.name ASC
+    `);
     return res.status(200).json(result.rows);
   } catch (error) {
     console.error('Error al obtener lista de usuarios:', error.message);

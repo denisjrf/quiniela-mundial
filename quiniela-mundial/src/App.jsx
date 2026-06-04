@@ -74,48 +74,42 @@ function getGroupWinners(matches, teams) {
   return qualifiers;
 }
 
-// Actualiza los Octavos de final basado en los clasificados de los grupos
-function populateRoundOf16(roundOf16, groupMatches, teams) {
-  const qualifiers = getGroupWinners(groupMatches, teams);
-  
-  return roundOf16.map(match => {
-    const [t1Key, t2Key] = match.type.split('_');
-    const group1 = t1Key.charAt(1);
-    const rank1 = parseInt(t1Key.charAt(0), 10) - 1;
-    const group2 = t2Key.charAt(1);
-    const rank2 = parseInt(t2Key.charAt(0), 10) - 1;
-
-    const team1 = qualifiers[group1]?.[rank1] || null;
-    const team2 = qualifiers[group2]?.[rank2] || null;
-
-    const team1Changed = match.team1 !== team1;
-    const team2Changed = match.team2 !== team2;
-
-    return {
-      ...match,
-      team1,
-      team2,
-      team1Score: team1Changed ? '' : match.team1Score,
-      team2Score: team2Changed ? '' : match.team2Score,
-      winner: (team1Changed || team2Changed) ? null : match.winner
-    };
-  });
-}
 
 // Propaga recursivamente los ganadores a través de las rondas de eliminatoria directa
 function propagateKnockouts(knockoutState) {
   const state = { ...knockoutState };
 
   const getWinnerOfMatch = (matchId, roundKey) => {
+    if (!state[roundKey]) return null;
     const match = state[roundKey].find(m => m.id === matchId);
     return match?.winner || null;
   };
 
   const getLoserOfMatch = (matchId, roundKey) => {
+    if (!state[roundKey]) return null;
     const match = state[roundKey].find(m => m.id === matchId);
     if (!match || !match.winner) return null;
     return match.winner === match.team1 ? match.team2 : match.team1;
   };
+
+  // Propagar de 16vos (roundOf32) a Octavos (roundOf16)
+  if (state.roundOf16 && state.roundOf32) {
+    state.roundOf16 = state.roundOf16.map(r16 => {
+      const team1 = getWinnerOfMatch(r16.source1, 'roundOf32');
+      const team2 = getWinnerOfMatch(r16.source2, 'roundOf32');
+      const team1Changed = r16.team1 !== team1;
+      const team2Changed = r16.team2 !== team2;
+
+      return {
+        ...r16,
+        team1,
+        team2,
+        team1Score: team1Changed ? '' : r16.team1Score,
+        team2Score: team2Changed ? '' : r16.team2Score,
+        winner: (team1Changed || team2Changed) ? null : r16.winner
+      };
+    });
+  }
 
   state.quarterfinals = state.quarterfinals.map(qf => {
     const team1 = getWinnerOfMatch(qf.source1, 'roundOf16');
@@ -204,7 +198,7 @@ export default function App() {
   }, [theme]);
 
   const [activeTab, setActiveTab] = useState('dashboard');
-  
+
   // --- ESTADO DE SESIÓN (JWT) ---
   const [token, setToken] = useState(() => localStorage.getItem('quiniela_jwt_token') || null);
   const [user, setUser] = useState(() => {
@@ -225,10 +219,11 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
+  const [systemConfig, setSystemConfig] = useState({ fase_grupos_bloqueada: false, fase_eliminatorias_bloqueada: false, fase_eliminatorias_visible: true });
 
   // --- ESTADOS LOCALES PARA LOGIN / REGISTRO ---
   const [isRegisterTab, setIsRegisterTab] = useState(false);
-  const [authForm, setAuthForm] = useState({ name: '', email: '', password: '' });
+  const [authForm, setAuthForm] = useState({ name: '', email: '', password: '', id_tipo_usuario: 2 });
   const [authError, setAuthError] = useState(null);
   const [authSuccess, setAuthSuccess] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -260,16 +255,16 @@ export default function App() {
       const predRes = await fetch(`${API_BASE_URL}/predictions/my`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
+
       if (predRes.status === 401 || predRes.status === 403) {
         handleLogout();
         return;
       }
 
       const predData = await predRes.json();
-      
-      // Si hay datos cargados, asignarlos y forzar el acople de kickoff; de lo contrario usar iniciales vacíos
-      if (predData.groupPredictions && predData.groupPredictions.length > 0) {
+
+      // Si hay datos cargados y coinciden con la cantidad de partidos del nuevo mundial (72), asignarlos; de lo contrario usar vacíos
+      if (predData.groupPredictions && predData.groupPredictions.length === initialGroupMatches.length) {
         const mergedGroup = predData.groupPredictions.map(m => ({
           ...m,
           kickoff: getMatchKickoff(m.id)
@@ -279,26 +274,85 @@ export default function App() {
         setGroupMatches(initialGroupMatches);
       }
 
-      if (predData.knockoutPredictions && Object.keys(predData.knockoutPredictions).length > 0) {
-        const mergedKnockout = {};
-        Object.keys(predData.knockoutPredictions).forEach(roundKey => {
-          mergedKnockout[roundKey] = predData.knockoutPredictions[roundKey].map(m => ({
-            ...m,
-            kickoff: getMatchKickoff(m.id)
-          }));
-        });
-        setKnockoutStage(mergedKnockout);
-      } else {
-        setKnockoutStage(initialKnockoutStage);
-      }
+      // Cargar resultados reales consolidados primero
+      const mergedRealKnockout = {};
+      Object.keys(initialKnockoutStage).forEach(key => {
+        mergedRealKnockout[key] = initialKnockoutStage[key].map(m => ({
+          ...m,
+          kickoff: getMatchKickoff(m.id)
+        }));
+      });
 
-      // Cargar resultados reales consolidados
       if (predData.realGroupResults && predData.realGroupResults.length > 0) {
         setRealGroupMatches(predData.realGroupResults);
       }
       if (predData.realKnockoutResults && Object.keys(predData.realKnockoutResults).length > 0) {
-        setRealKnockoutStage(predData.realKnockoutResults);
+        Object.keys(predData.realKnockoutResults).forEach(roundKey => {
+          if (mergedRealKnockout[roundKey]) {
+            mergedRealKnockout[roundKey] = mergedRealKnockout[roundKey].map(initialMatch => {
+              const dbMatch = predData.realKnockoutResults[roundKey].find(dm => dm.id === initialMatch.id);
+              if (dbMatch) {
+                return {
+                  ...initialMatch,
+                  team1: dbMatch.team1,
+                  team2: dbMatch.team2,
+                  team1Score: dbMatch.team1Score,
+                  team2Score: dbMatch.team2Score,
+                  winner: dbMatch.winner
+                };
+              }
+              return initialMatch;
+            });
+          }
+        });
       }
+      setRealKnockoutStage(mergedRealKnockout);
+
+      // Cargar predicciones de la quiniela del usuario
+      const mergedKnockout = {};
+      Object.keys(initialKnockoutStage).forEach(key => {
+        mergedKnockout[key] = initialKnockoutStage[key].map(m => ({
+          ...m,
+          kickoff: getMatchKickoff(m.id)
+        }));
+      });
+
+      if (predData.knockoutPredictions && Object.keys(predData.knockoutPredictions).length > 0) {
+        Object.keys(predData.knockoutPredictions).forEach(roundKey => {
+          if (mergedKnockout[roundKey]) {
+            mergedKnockout[roundKey] = mergedKnockout[roundKey].map(initialMatch => {
+              const dbMatch = predData.knockoutPredictions[roundKey].find(dm => dm.id === initialMatch.id);
+              if (dbMatch) {
+                return {
+                  ...initialMatch,
+                  team1: dbMatch.team1,
+                  team2: dbMatch.team2,
+                  team1Score: dbMatch.team1Score,
+                  team2Score: dbMatch.team2Score,
+                  winner: dbMatch.winner
+                };
+              }
+              return initialMatch;
+            });
+          }
+        });
+      }
+
+      // Sincronizar los equipos de 16vos con los equipos configurados por el administrador
+      if (mergedRealKnockout.roundOf32 && mergedKnockout.roundOf32) {
+        mergedKnockout.roundOf32 = mergedKnockout.roundOf32.map(match => {
+          const realMatch = mergedRealKnockout.roundOf32.find(rm => rm.id === match.id);
+          return {
+            ...match,
+            team1: realMatch ? realMatch.team1 : null,
+            team2: realMatch ? realMatch.team2 : null
+          };
+        });
+      }
+
+      // Propagar ganadores
+      const fullyPropagated = propagateKnockouts(mergedKnockout);
+      setKnockoutStage(fullyPropagated);
 
       // B. Cargar la tabla de posiciones general
       const lbRes = await fetch(`${API_BASE_URL}/leaderboard`, {
@@ -306,6 +360,18 @@ export default function App() {
       });
       const lbData = await lbRes.json();
       setLeaderboard(lbData);
+
+      // Cargar configuración del sistema
+      try {
+        const configRes = await fetch(`${API_BASE_URL}/config`);
+        if (configRes.ok) {
+          const configData = await configRes.json();
+          setSystemConfig(configData);
+        }
+      } catch (err) {
+        console.error('Error al cargar configuración del sistema:', err);
+      }
+
       setUnsavedChanges(false);
     } catch (error) {
       console.error('Error al sincronizar con la API:', error);
@@ -326,8 +392,8 @@ export default function App() {
     setLoading(true);
 
     const url = isRegisterTab ? `${API_BASE_URL}/auth/register` : `${API_BASE_URL}/auth/login`;
-    const payload = isRegisterTab 
-      ? { name: authForm.name, email: authForm.email, password: authForm.password }
+    const payload = isRegisterTab
+      ? { name: authForm.name, email: authForm.email, password: authForm.password, id_tipo_usuario: authForm.id_tipo_usuario }
       : { email: authForm.email, password: authForm.password };
 
     try {
@@ -396,7 +462,7 @@ export default function App() {
       }
 
       showToast('✔️ ¡Cuenta verificada con éxito! Ya puedes iniciar sesión.', 'success');
-      
+
       // Limpiar estados de verificación y prellenar formulario de login
       const verifiedEmail = verificationEmail;
       setVerificationEmail(null);
@@ -432,7 +498,7 @@ export default function App() {
 
     const hasIncompleteGroup = groupMatches.some(m => isIncomplete(m.team1Score, m.team2Score));
     const rounds = ['roundOf16', 'quarterfinals', 'semifinals', 'thirdPlace', 'final'];
-    const hasIncompleteKnockout = rounds.some(round => 
+    const hasIncompleteKnockout = rounds.some(round =>
       (knockoutStage[round] || []).some(m => m.team1 && m.team2 && isIncomplete(m.team1Score, m.team2Score))
     );
 
@@ -486,20 +552,10 @@ export default function App() {
   // A. Cambios en Fase de Grupos
   const handleMatchScoreChange = (matchId, teamKey, scoreValue) => {
     setGroupMatches(prevMatches => {
-      const updatedMatches = prevMatches.map(m => {
+      return prevMatches.map(m => {
         if (m.id === matchId) return { ...m, [teamKey]: scoreValue };
         return m;
       });
-
-      // Recalcular clasificados automáticamente
-      let updatedR16 = populateRoundOf16(knockoutStage.roundOf16, updatedMatches, initialTeams);
-      let updatedKnockout = propagateKnockouts({
-        ...knockoutStage,
-        roundOf16: updatedR16
-      });
-
-      setKnockoutStage(updatedKnockout);
-      return updatedMatches;
     });
     setUnsavedChanges(true);
   };
@@ -511,7 +567,7 @@ export default function App() {
         const nextMatch = { ...m, [teamKey]: scoreValue };
         const s1 = nextMatch.team1Score;
         const s2 = nextMatch.team2Score;
-        
+
         if (s1 !== '' && s2 !== '') {
           const g1 = parseInt(s1, 10);
           const g2 = parseInt(s2, 10);
@@ -585,12 +641,8 @@ export default function App() {
       return m;
     });
 
-    const updatedR16 = populateRoundOf16(realKnockoutStage.roundOf16, updatedMatches, initialTeams);
-    const updatedKnockout = propagateKnockouts({ ...realKnockoutStage, roundOf16: updatedR16 });
-
     setRealGroupMatches(updatedMatches);
-    setRealKnockoutStage(updatedKnockout);
-    saveRealResultsToServer(updatedMatches, updatedKnockout);
+    saveRealResultsToServer(updatedMatches, realKnockoutStage);
   };
 
   const handleRealKnockoutScoreChange = (round, matchId, teamKey, scoreValue) => {
@@ -620,6 +672,48 @@ export default function App() {
     saveRealResultsToServer(realGroupMatches, updatedKnockout);
   };
 
+  const handleRealKnockoutPenaltiesChange = (round, matchId, wentToPenalties) => {
+    const updatedRound = realKnockoutStage[round].map(m => {
+      if (m.id === matchId) return { ...m, went_to_penalties: wentToPenalties };
+      return m;
+    });
+    const updatedKnockout = { ...realKnockoutStage, [round]: updatedRound };
+    setRealKnockoutStage(updatedKnockout);
+    saveRealResultsToServer(realGroupMatches, updatedKnockout);
+  };
+
+  const handleRealKnockoutTeamChange = (round, matchId, teamKey, teamId) => {
+    const updatedRound = realKnockoutStage[round].map(m => {
+      if (m.id === matchId) {
+        const nextMatch = { ...m, [teamKey]: teamId || null };
+        nextMatch.team1Score = '';
+        nextMatch.team2Score = '';
+        nextMatch.winner = null;
+        return nextMatch;
+      }
+      return m;
+    });
+
+    const updatedKnockout = propagateKnockouts({ ...realKnockoutStage, [round]: updatedRound });
+    setRealKnockoutStage(updatedKnockout);
+
+    if (round === 'roundOf32') {
+      setKnockoutStage(prevKnockout => {
+        const updatedUserRoundOf32 = prevKnockout.roundOf32.map(match => {
+          const realMatch = updatedKnockout.roundOf32.find(rm => rm.id === match.id);
+          return {
+            ...match,
+            team1: realMatch ? realMatch.team1 : null,
+            team2: realMatch ? realMatch.team2 : null
+          };
+        });
+        return propagateKnockouts({ ...prevKnockout, roundOf32: updatedUserRoundOf32 });
+      });
+    }
+
+    saveRealResultsToServer(realGroupMatches, updatedKnockout);
+  };
+
   const handleAutoSimulateRealResults = () => {
     const simulatedGroupMatches = realGroupMatches.map(m => {
       const s1 = Math.floor(Math.random() * 4);
@@ -627,10 +721,8 @@ export default function App() {
       return { ...m, team1Score: String(s1), team2Score: String(s2) };
     });
 
-    let simR16 = populateRoundOf16(initialKnockoutStage.roundOf16, simulatedGroupMatches, initialTeams);
-    let simKnockout = propagateKnockouts({ ...initialKnockoutStage, roundOf16: simR16 });
-
-    const rounds = ['roundOf16', 'quarterfinals', 'semifinals', 'thirdPlace', 'final'];
+    let simKnockout = { ...realKnockoutStage };
+    const rounds = ['roundOf32', 'roundOf16', 'quarterfinals', 'semifinals', 'thirdPlace', 'final'];
     rounds.forEach(round => {
       simKnockout[round] = simKnockout[round].map(match => {
         if (!match.team1 || !match.team2) return match;
@@ -720,7 +812,8 @@ export default function App() {
     return { points, exactHits, outcomeHits };
   })();
 
-  const rank = leaderboard.findIndex(p => p.id === user?.id) + 1 || '-';
+  const filteredLeaderboard = leaderboard.filter(row => (row.id_tipo_usuario || 2) === (user?.id_tipo_usuario || 2));
+  const rank = filteredLeaderboard.findIndex(p => p.id === user?.id) + 1 || '-';
 
   // Evaluar si todos los grupos de la quiniela activa tienen predicciones completas
   const groupWinnersReady = groupMatches.every(
@@ -730,7 +823,7 @@ export default function App() {
   // Determinar si el usuario conectado es administrador (Super Admin o Admin asignado)
   const isAdmin = user && (
     user.is_admin === true ||
-    user.email === 'denis@logistica.com' || 
+    user.email === 'denis@logistica.com' ||
     user.email.toLowerCase().includes('denis') ||
     user.email.toLowerCase().includes('admin')
   );
@@ -751,7 +844,7 @@ export default function App() {
             </button>
           </div>
           <div className="glass-card fade-in" style={{ maxWidth: '480px', width: '100%', padding: '2.5rem 2rem', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)' }}>
-            
+
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <span className="logo-icon" style={{ fontSize: '3rem', display: 'block', marginBottom: '0.5rem' }}>✉️</span>
               <h1 className="gradient-text" style={{ fontSize: '1.85rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
@@ -790,11 +883,11 @@ export default function App() {
                   required
                   value={verificationCodeInput}
                   onChange={(e) => setVerificationCodeInput(e.target.value.replace(/\D/g, ''))}
-                  style={{ 
-                    fontSize: '1.75rem', 
-                    textAlign: 'center', 
-                    letterSpacing: '8px', 
-                    fontFamily: 'monospace', 
+                  style={{
+                    fontSize: '1.75rem',
+                    textAlign: 'center',
+                    letterSpacing: '8px',
+                    fontFamily: 'monospace',
                     fontWeight: 700,
                     color: 'var(--color-primary)'
                   }}
@@ -807,7 +900,7 @@ export default function App() {
             </form>
 
             <div style={{ textAlign: 'center', marginTop: '1.75rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
-              <button 
+              <button
                 onClick={() => {
                   setVerificationEmail(null);
                   setAuthError(null);
@@ -838,12 +931,12 @@ export default function App() {
           </button>
         </div>
         <div className="glass-card fade-in" style={{ maxWidth: '480px', width: '100%', padding: '2.5rem 2rem', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)' }}>
-          
+
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <img 
-              src={theme === 'light' ? `${import.meta.env.BASE_URL}logo_light_theme.png` : `${import.meta.env.BASE_URL}logo_dark_theme.png`} 
-              alt="Grupo Giraud" 
-              style={{ width: '100%', maxWidth: '280px', height: 'auto', display: 'block', margin: '0 auto 1.25rem auto' }} 
+            <img
+              src={theme === 'light' ? `${import.meta.env.BASE_URL}logo_light_theme.png` : `${import.meta.env.BASE_URL}logo_dark_theme.png`}
+              alt="Grupo Giraud"
+              style={{ width: '100%', maxWidth: '280px', height: 'auto', display: 'block', margin: '0 auto 1.25rem auto' }}
             />
             <h1 className="gradient-text" style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
               QUINIELA MUNDIAL
@@ -865,19 +958,36 @@ export default function App() {
             )}
 
             {isRegisterTab && (
-              <div>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
-                  Nombre Completo
-                </label>
-                <input
-                  type="text"
-                  className="profile-input"
-                  placeholder="Tu nombre..."
-                  required
-                  value={authForm.name}
-                  onChange={(e) => setAuthForm(prev => ({ ...prev, name: e.target.value }))}
-                />
-              </div>
+              <>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
+                    Nombre Completo
+                  </label>
+                  <input
+                    type="text"
+                    className="profile-input"
+                    placeholder="Tu nombre..."
+                    required
+                    value={authForm.name}
+                    onChange={(e) => setAuthForm(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
+                    Tipo de Usuario
+                  </label>
+                  <select
+                    className="profile-input"
+                    required
+                    value={authForm.id_tipo_usuario}
+                    onChange={(e) => setAuthForm(prev => ({ ...prev, id_tipo_usuario: parseInt(e.target.value) }))}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <option value={2}>Empleado 📦</option>
+                    <option value={1}>Cliente ⚽</option>
+                  </select>
+                </div>
+              </>
             )}
 
             <div>
@@ -950,7 +1060,7 @@ export default function App() {
             <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
               {isRegisterTab ? '¿Ya tienes una cuenta?' : '¿Aún no te has registrado?'}
             </span>
-            <button 
+            <button
               onClick={() => {
                 setIsRegisterTab(!isRegisterTab);
                 setAuthError(null);
@@ -984,10 +1094,10 @@ export default function App() {
       {/* Encabezado Principal */}
       <header>
         <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <img 
-            src={theme === 'light' ? `${import.meta.env.BASE_URL}logo_light_theme.png` : `${import.meta.env.BASE_URL}logo_dark_theme.png`} 
-            alt="Grupo Giraud" 
-            style={{ height: '35px', width: 'auto', objectFit: 'contain' }} 
+          <img
+            src={theme === 'light' ? `${import.meta.env.BASE_URL}logo_light_theme.png` : `${import.meta.env.BASE_URL}logo_dark_theme.png`}
+            alt="Grupo Giraud"
+            style={{ height: '35px', width: 'auto', objectFit: 'contain' }}
           />
           <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1rem', display: 'flex', alignItems: 'center' }}>
             <h1 className="gradient-text" style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>QUINIELA MUNDIAL</h1>
@@ -996,32 +1106,34 @@ export default function App() {
 
         {/* Navegación por Pestañas */}
         <nav className="navigation-tabs">
-          <button 
+          <button
             className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveTab('dashboard')}
           >
             🏠 Dashboard
           </button>
-          <button 
+          <button
             className={`tab-btn ${activeTab === 'groups' ? 'active' : ''}`}
             onClick={() => setActiveTab('groups')}
           >
             ⚽ Fase de Grupos
           </button>
-          <button 
-            className={`tab-btn ${activeTab === 'bracket' ? 'active' : ''}`}
-            onClick={() => setActiveTab('bracket')}
-          >
-            🌲 Bracket Eliminatorias
-          </button>
-          <button 
+          {(systemConfig.fase_eliminatorias_visible || isAdmin) && (
+            <button
+              className={`tab-btn ${activeTab === 'bracket' ? 'active' : ''}`}
+              onClick={() => setActiveTab('bracket')}
+            >
+              🌲 Bracket Eliminatorias
+            </button>
+          )}
+          <button
             className={`tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`}
             onClick={() => setActiveTab('leaderboard')}
           >
             📊 Clasificación General
           </button>
           {isAdmin && (
-            <button 
+            <button
               className={`tab-btn ${activeTab === 'admin' ? 'active' : ''}`}
               onClick={() => setActiveTab('admin')}
             >
@@ -1030,7 +1142,7 @@ export default function App() {
           )}
         </nav>
 
-        {/* Info del Empleado Conectado */}
+        {/* Info del Usuario Conectado */}
         <div className="user-selector-bar" style={{ gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <div className="profile-avatar" style={{ width: '26px', height: '26px', fontSize: '0.8rem', background: 'linear-gradient(135deg, var(--color-primary), var(--color-info))' }}>
@@ -1038,8 +1150,8 @@ export default function App() {
             </div>
             <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)' }}>{user.name}</span>
           </div>
-          <button 
-            onClick={handleLogout} 
+          <button
+            onClick={handleLogout}
             style={{ background: 'rgba(255, 0, 85, 0.08)', border: 'none', color: 'var(--color-danger)', fontSize: '0.7rem', fontWeight: 700, padding: '0.3rem 0.6rem', borderRadius: '15px', cursor: 'pointer', transition: 'var(--transition-smooth)' }}
             title="Cerrar Sesión"
           >
@@ -1057,7 +1169,7 @@ export default function App() {
         ) : (
           <>
             {activeTab === 'dashboard' && (
-              <Dashboard 
+              <Dashboard
                 currentUser={user}
                 groupMatches={groupMatches}
                 knockoutStage={knockoutStage}
@@ -1069,30 +1181,32 @@ export default function App() {
             )}
 
             {activeTab === 'groups' && (
-              <GroupStage 
+              <GroupStage
                 groupMatches={groupMatches}
                 teams={initialTeams}
                 onMatchScoreChange={handleMatchScoreChange}
+                faseLocked={systemConfig.fase_grupos_bloqueada}
               />
             )}
 
             {activeTab === 'bracket' && (
-              <KnockoutStage 
+              <KnockoutStage
                 knockoutStage={knockoutStage}
                 teams={initialTeams}
                 onKnockoutScoreChange={handleKnockoutScoreChange}
                 onSelectWinner={handleSelectWinner}
                 groupWinnersReady={groupWinnersReady}
+                faseLocked={systemConfig.fase_eliminatorias_bloqueada}
               />
             )}
 
             {activeTab === 'leaderboard' && (
-              /* En el hosting central, Leaderboard muestra a todos los empleados reales de la base de datos */
+              /* En el hosting central, Leaderboard muestra a todos los participantes reales de la base de datos */
               <div className="fade-in glass-card">
                 <div style={{ marginBottom: '1.5rem' }}>
                   <h3 className="gradient-text" style={{ fontWeight: 800, fontSize: '1.35rem' }}>📊 Tabla de Posiciones General</h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                    Clasificación de todos los empleados de la empresa de logística. Los puntos se calculan en base a los marcadores reales.
+                    Clasificación de todos los participantes de la quiniela. Los puntos se calculan en base a los marcadores reales.
                   </p>
                 </div>
 
@@ -1106,15 +1220,17 @@ export default function App() {
                       <div className="points-cell">Puntos</div>
                     </div>
 
-                    {leaderboard.map((row, index) => {
+                    {leaderboard
+                      .filter(row => (row.id_tipo_usuario || 2) === (user?.id_tipo_usuario || 2))
+                      .map((row, index) => {
                       const isRank1 = index === 0;
                       const isRank2 = index === 1;
                       const isRank3 = index === 2;
                       const isCurrentUser = row.id === user?.id;
 
                       return (
-                        <div 
-                          key={row.id} 
+                        <div
+                          key={row.id}
                           className={`leaderboard-row ${isCurrentUser ? 'highlight' : ''}`}
                           style={{ borderLeft: isCurrentUser ? '3px solid var(--color-primary)' : '1px solid var(--border-color)' }}
                         >
@@ -1123,12 +1239,12 @@ export default function App() {
                           </div>
 
                           <div className="name-cell">
-                            <div className="profile-avatar" style={{ 
-                              width: '24px', 
-                              height: '24px', 
+                            <div className="profile-avatar" style={{
+                              width: '24px',
+                              height: '24px',
                               fontSize: '0.75rem',
-                              background: isCurrentUser 
-                                ? 'linear-gradient(135deg, var(--color-primary), var(--color-info))' 
+                              background: isCurrentUser
+                                ? 'linear-gradient(135deg, var(--color-primary), var(--color-info))'
                                 : 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.1))'
                             }}>
                               {row.name.charAt(0)}
@@ -1139,10 +1255,10 @@ export default function App() {
                             </div>
                           </div>
 
-                          <div>{row.predictionsCount} / 64</div>
+                          <div>{row.predictionsCount} / 104</div>
 
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>{row.exactHits}</span> 
+                            <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>{row.exactHits}</span>
                             {' / '}
                             <span style={{ color: 'var(--color-info)', fontWeight: 600 }}>{row.outcomeHits}</span>
                           </div>
@@ -1157,7 +1273,7 @@ export default function App() {
             )}
 
             {activeTab === 'admin' && isAdmin && (
-              <AdminPanel 
+              <AdminPanel
                 realGroupMatches={realGroupMatches}
                 realKnockoutStage={realKnockoutStage}
                 teams={initialTeams}
@@ -1168,6 +1284,20 @@ export default function App() {
                 token={token}
                 currentUser={user}
                 showToast={showToast}
+                config={systemConfig}
+                onReloadConfig={async () => {
+                  try {
+                    const configRes = await fetch(`${API_BASE_URL}/config`);
+                    if (configRes.ok) {
+                      const configData = await configRes.json();
+                      setSystemConfig(configData);
+                    }
+                  } catch (err) {
+                    console.error(err);
+                  }
+                }}
+                onRealKnockoutTeamChange={handleRealKnockoutTeamChange}
+                onRealKnockoutPenaltiesChange={handleRealKnockoutPenaltiesChange}
               />
             )}
           </>
@@ -1181,16 +1311,16 @@ export default function App() {
             ⚠️ Tienes cambios sin guardar en tu Quiniela
           </span>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button 
+            <button
               onClick={handleDiscardChanges}
               disabled={saving}
-              style={{ 
-                background: 'transparent', 
-                border: '1px solid rgba(255, 255, 255, 0.25)', 
-                color: 'var(--text-primary)', 
-                padding: '0.5rem 1rem', 
-                borderRadius: '20px', 
-                fontSize: '0.8rem', 
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                color: 'var(--text-primary)',
+                padding: '0.5rem 1rem',
+                borderRadius: '20px',
+                fontSize: '0.8rem',
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.2s'
@@ -1200,8 +1330,8 @@ export default function App() {
             >
               🗑️ Descartar
             </button>
-            <button 
-              className="primary-btn" 
+            <button
+              className="primary-btn"
               onClick={handleSavePredictions}
               disabled={saving}
               style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}

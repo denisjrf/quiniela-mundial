@@ -37,6 +37,11 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, button:focus, button:active, button:focus-visible {
+  outline: none !important;
 }
 
 body {
@@ -538,9 +543,9 @@ header {
 
 .bracket-container {
   display: grid;
-  grid-template-columns: repeat(5, 260px);
+  grid-template-columns: repeat(6, 260px);
   gap: 2.5rem;
-  min-width: 1350px;
+  min-width: 1650px;
   margin: 0 auto;
   position: relative;
 }
@@ -549,7 +554,7 @@ header {
   display: flex;
   flex-direction: column;
   justify-content: space-around;
-  height: 650px;
+  height: 1150px;
 }
 
 .bracket-round-title {

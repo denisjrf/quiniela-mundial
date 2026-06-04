@@ -1,26 +1,30 @@
 import React, { useState } from 'react';
 
-export default function Dashboard({ 
-  currentUser, 
-  groupMatches, 
-  knockoutStage, 
-  points, 
-  rank, 
+export default function Dashboard({
+  currentUser,
+  groupMatches,
+  knockoutStage,
+  points,
+  rank,
   teams,
   onRenameProfile
 }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [tempName, setTempName] = useState(currentUser.name);
+  const [tempName, setTempName] = useState(currentUser?.name || '');
   const [showChampModal, setShowChampModal] = useState(false);
 
   // Sincronizar tempName si cambia el usuario activo
   React.useEffect(() => {
-    setTempName(currentUser.name);
+    if (currentUser?.name) {
+      setTempName(currentUser.name);
+    }
   }, [currentUser]);
 
   const startEditing = () => {
-    setTempName(currentUser.name);
-    setIsEditing(true);
+    if (currentUser?.name) {
+      setTempName(currentUser.name);
+      setIsEditing(true);
+    }
   };
 
   const saveRename = () => {
@@ -36,23 +40,23 @@ export default function Dashboard({
   };
 
   // Calcular progreso de predicciones
-  const totalGroupMatches = groupMatches.length; // 48
+  const totalGroupMatches = groupMatches.length; // 72
   const predictedGroups = groupMatches.filter(
     m => m.team1Score !== '' && m.team2Score !== ''
   ).length;
 
   // Contar predicciones de eliminatorias
   let predictedKnockouts = 0;
-  const rounds = ['roundOf16', 'quarterfinals', 'semifinals', 'thirdPlace', 'final'];
+  const rounds = ['roundOf32', 'roundOf16', 'quarterfinals', 'semifinals', 'thirdPlace', 'final'];
   rounds.forEach(round => {
     knockoutStage[round]?.forEach(m => {
       if (m.team1Score !== '' && m.team2Score !== '') predictedKnockouts++;
     });
   });
-  
-  const totalKnockoutMatches = 16; // 8 R16, 4 QF, 2 SF, 1 TP, 1 F
+
+  const totalKnockoutMatches = 32; // 16 R32, 8 R16, 4 QF, 2 SF, 1 TP, 1 F
   const totalPredicted = predictedGroups + predictedKnockouts;
-  const grandTotalMatches = totalGroupMatches + totalKnockoutMatches; // 64
+  const grandTotalMatches = totalGroupMatches + totalKnockoutMatches; // 104
   const progressPercent = Math.round((totalPredicted / grandTotalMatches) * 100);
 
   // Obtener Campeón Predicho
@@ -74,11 +78,11 @@ export default function Dashboard({
                 <input
                   type="text"
                   className="profile-input"
-                  style={{ 
-                    fontSize: '1.2rem', 
-                    padding: '0.15rem 0.4rem', 
-                    display: 'inline-block', 
-                    width: '180px', 
+                  style={{
+                    fontSize: '1.2rem',
+                    padding: '0.15rem 0.4rem',
+                    display: 'inline-block',
+                    width: '180px',
                     fontWeight: 700,
                     border: '1px solid var(--color-primary)',
                     boxShadow: '0 0 8px rgba(0, 255, 135, 0.25)',
@@ -91,15 +95,15 @@ export default function Dashboard({
                   autoFocus
                   maxLength={20}
                 />
-                <button 
-                  onClick={saveRename} 
+                <button
+                  onClick={saveRename}
                   style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.1rem' }}
                   title="Guardar nombre"
                 >
                   ✔️
                 </button>
-                <button 
-                  onClick={() => setIsEditing(false)} 
+                <button
+                  onClick={() => setIsEditing(false)}
                   style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.1rem' }}
                   title="Cancelar"
                 >
@@ -107,12 +111,12 @@ export default function Dashboard({
                 </button>
               </span>
             ) : (
-              <><span className="gradient-text" style={{ cursor: 'pointer', borderBottom: '1px dashed var(--color-primary)', position: 'relative' }} onClick={startEditing} title="Haz clic para cambiar tu nombre">{currentUser.name.trim()}!</span><span style={{ fontSize: '0.85rem', verticalAlign: 'middle', opacity: 0.7, marginLeft: '0.35rem', cursor: 'pointer' }} onClick={startEditing}>✏️</span></>
+              <><span className="gradient-text" style={{ cursor: 'pointer', borderBottom: '1px dashed var(--color-primary)', position: 'relative' }} onClick={startEditing} title="Haz clic para cambiar tu nombre">{(currentUser?.name || '').trim()}!</span><span style={{ fontSize: '0.85rem', verticalAlign: 'middle', opacity: 0.7, marginLeft: '0.35rem', cursor: 'pointer' }} onClick={startEditing}>✏️</span></>
             )}{' '}Bienvenido a la Quiniela de Grupo Giraud
           </h2>
           <p>
-            Pronostica todos los encuentros de la Copa del Mundo. Rellena los marcadores de la Fase de Grupos 
-            y observa cómo la tabla de posiciones calcula automáticamente los clasificados a los Octavos de final. 
+            Pronostica todos los encuentros de la Copa del Mundo. Rellena los marcadores de la Fase de Grupos
+            y observa cómo la tabla de posiciones calcula automáticamente los clasificados a los Octavos de final.
             ¡Completa el Bracket y corona a tu campeón!
           </p>
         </div>
@@ -121,10 +125,10 @@ export default function Dashboard({
       {showChampModal && championTeam && (
         <div className="champ-reveal-modal" onClick={() => setShowChampModal(false)}>
           <div className="champ-reveal-card" onClick={(e) => e.stopPropagation()}>
-            <img 
-              src={`https://flagcdn.com/w160/${championTeam.flag}.png`} 
-              alt={championTeam.name} 
-              style={{ width: '120px', height: '80px', borderRadius: '8px', objectFit: 'cover', boxShadow: '0 4px 15px rgba(0,0,0,0.5)', marginBottom: '1rem' }} 
+            <img
+              src={`https://flagcdn.com/w160/${championTeam.flag}.png`}
+              alt={championTeam.name}
+              style={{ width: '120px', height: '80px', borderRadius: '8px', objectFit: 'cover', boxShadow: '0 4px 15px rgba(0,0,0,0.5)', marginBottom: '1rem' }}
             />
           </div>
         </div>
@@ -146,10 +150,10 @@ export default function Dashboard({
           <div className="stat-val secondary" style={{ fontSize: championTeam ? '1.5rem' : '1.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: championTeam ? '0.75rem' : '0.5rem' }}>
             {championTeam ? (
               <>
-                <img 
-                  src={`https://flagcdn.com/w40/${championTeam.flag}.png`} 
-                  alt={championTeam.name} 
-                  className="team-flag-img" 
+                <img
+                  src={`https://flagcdn.com/w40/${championTeam.flag}.png`}
+                  alt={championTeam.name}
+                  className="team-flag-img"
                 />
                 <span style={{ fontWeight: 800 }}>{championTeam.name}</span>
               </>
@@ -191,7 +195,7 @@ export default function Dashboard({
           <li>
             <span className="rule-number">3</span>
             <div>
-              <strong>Resultado Exacto (+3 Puntos):</strong> Acertaste exactamente la cantidad de goles de ambos equipos. 
+              <strong>Resultado Exacto (+3 Puntos):</strong> Acertaste exactamente la cantidad de goles de ambos equipos.
               <span style={{ color: 'var(--color-primary)', display: 'block', fontSize: '0.8rem', marginTop: '0.15rem' }}>Ejemplo: Tu Predicción: 2 - 1 | Resultado Real: 2 - 1.</span>
             </div>
           </li>
@@ -207,6 +211,13 @@ export default function Dashboard({
             <div>
               <strong>Resultado Incorrecto (0 Puntos):</strong> No acertaste el ganador ni el empate del partido.
               <span style={{ color: 'var(--color-danger)', display: 'block', fontSize: '0.8rem', marginTop: '0.15rem' }}>Ejemplo: Tu Predicción: 1 - 1 | Resultado Real: 0 - 3.</span>
+            </div>
+          </li>
+          <li>
+            <span className="rule-number" style={{ background: 'rgba(255, 215, 0, 0.15)', color: 'var(--color-accent)', border: '1px solid rgba(255, 215, 0, 0.3)' }}>1</span>
+            <div>
+              <strong>Eliminatorias — Ganador en Penales (+1 Punto):</strong> El partido llegó a penales y acertaste el equipo que ganó la tanda.
+              <span style={{ color: 'var(--color-accent)', display: 'block', fontSize: '0.8rem', marginTop: '0.15rem' }}>Ejemplo: El partido fue empate 1-1 y lo decidieron los penales. Si predijiste el ganador → 1 pto.</span>
             </div>
           </li>
         </ul>

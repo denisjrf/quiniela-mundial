@@ -25,6 +25,38 @@ const initDatabase = async () => {
   try {
     console.log('🔄 Iniciando base de datos PostgreSQL...');
 
+    // 0.0. Crear Tabla de Configuración de Sistema
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS system_config (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `);
+
+    // Valores iniciales para la configuración del torneo
+    await client.query(`
+      INSERT INTO system_config (key, value) VALUES 
+      ('fase_grupos_bloqueada', 'false'),
+      ('fase_eliminatorias_bloqueada', 'true'),
+      ('fase_eliminatorias_visible', 'false')
+      ON CONFLICT (key) DO NOTHING;
+    `);
+
+    // 0. Crear Tabla de Tipos de Usuario
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS tipo_usuario (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT UNIQUE NOT NULL
+      );
+    `);
+
+    // Insertar valores por defecto para tipo_usuario
+    await client.query(`
+      INSERT INTO tipo_usuario (id, nombre)
+      VALUES (1, 'Cliente'), (2, 'Empleado')
+      ON CONFLICT (id) DO NOTHING;
+    `);
+
     // 1. Crear Tabla de Usuarios (Empleados) con soporte de roles
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -46,6 +78,14 @@ const initDatabase = async () => {
     `);
     await client.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;
+    `);
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS id_tipo_usuario INT REFERENCES tipo_usuario(id);
+    `);
+
+    // Asignar Empleado (2) por defecto a usuarios que no tengan tipo de usuario asignado
+    await client.query(`
+      UPDATE users SET id_tipo_usuario = 2 WHERE id_tipo_usuario IS NULL;
     `);
 
     // Asegurar que el super administrador Denis siempre sea admin de forma permanente

@@ -62,8 +62,8 @@ router.post('/save', auth, async (req, res) => {
     return (has1 && !has2) || (!has1 && has2);
   };
 
+  const rounds = ['roundOf32', 'roundOf16', 'quarterfinals', 'semifinals', 'thirdPlace', 'final'];
   const hasIncompleteGroup = groupPredictions.some(m => isIncomplete(m.team1Score, m.team2Score));
-  const rounds = ['roundOf16', 'quarterfinals', 'semifinals', 'thirdPlace', 'final'];
   const hasIncompleteKnockout = rounds.some(round => 
     (knockoutPredictions[round] || []).some(m => m.team1 && m.team2 && isIncomplete(m.team1Score, m.team2Score))
   );
@@ -73,6 +73,13 @@ router.post('/save', auth, async (req, res) => {
   }
 
   try {
+    // 0. Obtener la configuración del sistema para bloqueos de fases
+    const configRes = await db.query('SELECT key, value FROM system_config');
+    const config = {};
+    configRes.rows.forEach(row => {
+      config[row.key] = row.value === 'true';
+    });
+
     // 1. Obtener predicciones guardadas previamente del usuario para restaurar si un partido está bloqueado
     const prevRes = await db.query(
       'SELECT group_predictions, knockout_predictions FROM predictions WHERE user_id = $1',
@@ -91,7 +98,8 @@ router.post('/save', auth, async (req, res) => {
     // 2. Sanitizar predicciones de la Fase de Grupos
     const sanitizedGroup = groupPredictions.map(match => {
       const kickoff = getMatchKickoff(match.id);
-      if (isLocked(kickoff)) {
+      // Bloquear si la fase completa está bloqueada administrativamente o si el partido ya inició
+      if (config.fase_grupos_bloqueada || isLocked(kickoff)) {
         // Restaurar marcadores previos guardados en la base de datos
         const dbMatch = prevGroup.find(m => m.id === match.id);
         return {
@@ -105,7 +113,6 @@ router.post('/save', auth, async (req, res) => {
 
     // 3. Sanitizar predicciones de la Fase de Eliminatorias
     const sanitizedKnockout = {};
-    const rounds = ['roundOf16', 'quarterfinals', 'semifinals', 'thirdPlace', 'final'];
     
     rounds.forEach(roundKey => {
       const incomingMatches = knockoutPredictions[roundKey] || [];
@@ -113,13 +120,12 @@ router.post('/save', auth, async (req, res) => {
       
       sanitizedKnockout[roundKey] = incomingMatches.map(match => {
         const kickoff = getMatchKickoff(match.id);
-        if (isLocked(kickoff)) {
+        // Bloquear si la fase de eliminatorias completa está bloqueada o si el partido ya inició
+        if (config.fase_eliminatorias_bloqueada || isLocked(kickoff)) {
           // Restaurar marcadores y ganadores previos guardados en la base de datos
           const dbMatch = dbMatches.find(m => m.id === match.id);
           return {
             ...match,
-            team1: dbMatch ? dbMatch.team1 : null,
-            team2: dbMatch ? dbMatch.team2 : null,
             team1Score: dbMatch ? dbMatch.team1Score : '',
             team2Score: dbMatch ? dbMatch.team2Score : '',
             winner: dbMatch ? dbMatch.winner : null

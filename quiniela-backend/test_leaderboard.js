@@ -1,28 +1,29 @@
-const express = require('express');
-const router = express.Router();
-const db = require('../db');
-const auth = require('../middleware/auth');
+const { Pool } = require('c:/Users/denis/OneDrive/Documents/quiniela/quiniela-backend/node_modules/pg');
+require('c:/Users/denis/OneDrive/Documents/quiniela/quiniela-backend/node_modules/dotenv').config({ path: 'c:/Users/denis/OneDrive/Documents/quiniela/quiniela-backend/.env' });
 
-// Obtener la clasificación general de todos los empleados
-router.get('/', auth, async (req, res) => {
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL
+});
+
+async function main() {
+  const client = await pool.connect();
   try {
-    // 1. Obtener todos los usuarios, sus predicciones y tipo de usuario
-    const allPredictions = await db.query(`
+    const allPredictions = await client.query(`
       SELECT u.id as user_id, u.name, u.id_tipo_usuario, tu.nombre as tipo_usuario_nombre, p.group_predictions, p.knockout_predictions 
       FROM users u
       LEFT JOIN predictions p ON u.id = p.user_id
       LEFT JOIN tipo_usuario tu ON u.id_tipo_usuario = tu.id
     `);
 
-    // 2. Obtener los resultados reales actuales
-    const realRes = await db.query(
+    console.log('Query result rows length:', allPredictions.rows.length);
+
+    const realRes = await client.query(
       'SELECT group_results, knockout_results FROM real_results ORDER BY id DESC LIMIT 1'
     );
 
     const realGroup = realRes.rows.length > 0 ? realRes.rows[0].group_results : [];
     const realKnockout = realRes.rows.length > 0 ? realRes.rows[0].knockout_results : {};
 
-    // 3. Calcular puntos para cada usuario
     const leaderboard = allPredictions.rows.map(userRow => {
       let points = 0;
       let exactHits = 0;
@@ -32,7 +33,6 @@ router.get('/', auth, async (req, res) => {
       const groupPred = userRow.group_predictions || [];
       const knockoutPred = userRow.knockout_predictions || {};
 
-      // A. Evaluar Fase de Grupos
       groupPred.forEach(pred => {
         const predT1 = pred.team1Score;
         const predT2 = pred.team2Score;
@@ -64,7 +64,6 @@ router.get('/', auth, async (req, res) => {
         }
       });
 
-      // B. Evaluar Eliminatorias (Aciertos de Ganadores)
       const rounds = ['roundOf32', 'roundOf16', 'quarterfinals', 'semifinals', 'thirdPlace', 'final'];
       rounds.forEach(round => {
         knockoutPred[round]?.forEach(pred => {
@@ -78,14 +77,8 @@ router.get('/', auth, async (req, res) => {
           const real = realKnockout[round]?.find(m => m.id === pred.id);
           if (!real || !real.winner || !pred.winner) return;
 
-          if (real.went_to_penalties) {
-            // Si fue a penales: solo 1 punto por acertar el ganador
-            if (pred.winner === real.winner) {
-              points += 1;
-              outcomeHits++;
-            }
-          } else if (pred.winner === real.winner) {
-            points += 3; // 3 puntos por ganador acertado en tiempo normal
+          if (pred.winner === real.winner) {
+            points += 3;
             exactHits++;
           }
         });
@@ -103,7 +96,6 @@ router.get('/', auth, async (req, res) => {
       };
     });
 
-    // 4. Ordenar el Leaderboard: Puntos DESC, ExactHits DESC, OutcomeHits DESC, Alfabético ASC
     const sortedLeaderboard = leaderboard.sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
       if (b.exactHits !== a.exactHits) return b.exactHits - a.exactHits;
@@ -111,11 +103,15 @@ router.get('/', auth, async (req, res) => {
       return a.name.localeCompare(b.name);
     });
 
-    return res.status(200).json(sortedLeaderboard);
-  } catch (error) {
-    console.error('Error calculando el Leaderboard:', error.message);
-    return res.status(500).json({ error: 'Error calculando la clasificación en el servidor.' });
-  }
-});
+    console.log('Leaderboard output:');
+    console.log(JSON.stringify(sortedLeaderboard, null, 2));
 
-module.exports = router;
+  } catch (error) {
+    console.error('Logic Error:', error.message);
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+main();

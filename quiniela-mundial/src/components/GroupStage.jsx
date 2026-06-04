@@ -4,9 +4,11 @@ import { getMatchKickoff } from '../data/worldCupData';
 export default function GroupStage({ 
   groupMatches, 
   teams, 
-  onMatchScoreChange 
+  onMatchScoreChange,
+  faseLocked = false
 }) {
   const isMatchLocked = (matchId) => {
+    if (faseLocked) return true;
     const kickoff = getMatchKickoff(matchId);
     return Date.now() > (new Date(kickoff).getTime() - 30 * 60 * 1000);
   };
@@ -16,7 +18,8 @@ export default function GroupStage({
   // Usamos un objeto { [groupName]: 'matches' | 'standings' }
   const [activeGroupTab, setActiveGroupTab] = useState({
     A: 'matches', B: 'matches', C: 'matches', D: 'matches',
-    E: 'matches', F: 'matches', G: 'matches', H: 'matches'
+    E: 'matches', F: 'matches', G: 'matches', H: 'matches',
+    I: 'matches', J: 'matches', K: 'matches', L: 'matches'
   });
 
   const toggleGroupTab = (group, tab) => {
@@ -26,7 +29,7 @@ export default function GroupStage({
     }));
   };
 
-  const groupKeys = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  const groupKeys = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
   // Función para calcular la tabla de posiciones de un grupo específico
   const calculateStandings = (groupKey) => {
@@ -53,26 +56,28 @@ export default function GroupStage({
         const s2 = parseInt(score2, 10);
 
         if (!isNaN(s1) && !isNaN(s2)) {
-          stats[m.team1].played += 1;
-          stats[m.team2].played += 1;
-          stats[m.team1].gf += s1;
-          stats[m.team1].ga += s2;
-          stats[m.team2].gf += s2;
-          stats[m.team2].ga += s1;
+          if (stats[m.team1] && stats[m.team2]) {
+            stats[m.team1].played += 1;
+            stats[m.team2].played += 1;
+            stats[m.team1].gf += s1;
+            stats[m.team1].ga += s2;
+            stats[m.team2].gf += s2;
+            stats[m.team2].ga += s1;
 
-          if (s1 > s2) {
-            stats[m.team1].won += 1;
-            stats[m.team1].pts += 3;
-            stats[m.team2].lost += 1;
-          } else if (s1 < s2) {
-            stats[m.team2].won += 1;
-            stats[m.team2].pts += 3;
-            stats[m.team1].lost += 1;
-          } else {
-            stats[m.team1].drawn += 1;
-            stats[m.team1].pts += 1;
-            stats[m.team2].drawn += 1;
-            stats[m.team2].pts += 1;
+            if (s1 > s2) {
+              stats[m.team1].won += 1;
+              stats[m.team1].pts += 3;
+              stats[m.team2].lost += 1;
+            } else if (s1 < s2) {
+              stats[m.team2].won += 1;
+              stats[m.team2].pts += 3;
+              stats[m.team1].lost += 1;
+            } else {
+              stats[m.team1].drawn += 1;
+              stats[m.team1].pts += 1;
+              stats[m.team2].drawn += 1;
+              stats[m.team2].pts += 1;
+            }
           }
         }
       }
@@ -142,8 +147,8 @@ export default function GroupStage({
                 /* Lista de Partidos del Grupo */
                 <div className="matches-list">
                   {groupMatchesList.map(match => {
-                    const team1Obj = teams[match.team1];
-                    const team2Obj = teams[match.team2];
+                    const team1Obj = teams[match.team1] || { id: match.team1, name: match.team1 || 'TBD', flag: 'un' };
+                    const team2Obj = teams[match.team2] || { id: match.team2, name: match.team2 || 'TBD', flag: 'un' };
                     const locked = isMatchLocked(match.id);
 
                     return (
@@ -255,7 +260,7 @@ export default function GroupStage({
                   </table>
                   <div className="instructions-tip" style={{ fontSize: '0.7rem', padding: '0.4rem 0.6rem', marginTop: '0.75rem', gap: '0.35rem' }}>
                     <span>💡</span>
-                    <span>Los dos primeros equipos avanzan automáticamente a Octavos de Final.</span>
+                    <span>Los dos primeros equipos y los 8 mejores terceros avanzan a Dieciseisavos de Final.</span>
                   </div>
                 </div>
               )}

@@ -168,7 +168,7 @@ export default function Leaderboard({
 
                 {/* Pronósticos completos */}
                 <div>
-                  {row.predictionsCount} / 64
+                  {row.predictionsCount} / 104
                 </div>
 
                 {/* Aciertos (Exacto / Simple) */}
