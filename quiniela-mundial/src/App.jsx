@@ -271,15 +271,23 @@ export default function App() {
 
       const predData = await predRes.json();
 
-      // Si hay datos cargados y coinciden con la cantidad de partidos del nuevo mundial (72), asignarlos; de lo contrario usar vacíos
-      if (predData.groupPredictions && predData.groupPredictions.length === initialGroupMatches.length) {
-        const mergedGroup = predData.groupPredictions.map(m => ({
-          ...m,
-          kickoff: getMatchKickoff(m.id)
-        }));
+      // Merge de predicciones del usuario (para no perder datos si tenía 48 partidos guardados y ahora son 72)
+      if (predData.groupPredictions && predData.groupPredictions.length > 0) {
+        const mergedGroup = initialGroupMatches.map(m => {
+          const dbMatch = predData.groupPredictions.find(pm => pm.id === m.id);
+          if (dbMatch) {
+            return {
+              ...m,
+              team1Score: dbMatch.team1Score,
+              team2Score: dbMatch.team2Score,
+              kickoff: getMatchKickoff(m.id)
+            };
+          }
+          return { ...m, kickoff: getMatchKickoff(m.id) };
+        });
         setGroupMatches(mergedGroup);
       } else {
-        setGroupMatches(initialGroupMatches);
+        setGroupMatches(initialGroupMatches.map(m => ({ ...m, kickoff: getMatchKickoff(m.id) })));
       }
 
       // Cargar resultados reales consolidados primero
@@ -291,8 +299,20 @@ export default function App() {
         }));
       });
 
+      // Merge de resultados reales (para soportar grupos I,J,K,L si el admin guardó antes)
       if (predData.realGroupResults && predData.realGroupResults.length > 0) {
-        setRealGroupMatches(predData.realGroupResults);
+        const mergedRealGroup = initialGroupMatches.map(m => {
+          const dbMatch = predData.realGroupResults.find(rm => rm.id === m.id);
+          if (dbMatch) {
+            return {
+              ...m,
+              team1Score: dbMatch.team1Score,
+              team2Score: dbMatch.team2Score
+            };
+          }
+          return { ...m, team1Score: '', team2Score: '' };
+        });
+        setRealGroupMatches(mergedRealGroup);
       }
       if (predData.realKnockoutResults && Object.keys(predData.realKnockoutResults).length > 0) {
         Object.keys(predData.realKnockoutResults).forEach(roundKey => {
