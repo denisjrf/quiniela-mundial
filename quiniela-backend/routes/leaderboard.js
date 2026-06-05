@@ -12,6 +12,7 @@ router.get('/', auth, async (req, res) => {
       FROM users u
       LEFT JOIN predictions p ON u.id = p.user_id
       LEFT JOIN tipo_usuario tu ON u.id_tipo_usuario = tu.id
+      WHERE u.email != 'denis@gmail.com'
     `);
 
     // 2. Obtener los resultados reales actuales

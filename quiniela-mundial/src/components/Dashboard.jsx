@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import confetti from 'canvas-confetti';
 import { initialTeams, initialGroupMatches, initialKnockoutStage, getMatchKickoff } from '../data/worldCupData';
 
 export default function Dashboard({
@@ -134,6 +135,48 @@ export default function Dashboard({
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // --- CONFETTI ANIMATION AL SUBIR PUNTOS ---
+  useEffect(() => {
+    if (!currentUser || typeof points === 'undefined') return;
+    
+    const storageKey = `quiniela_points_${currentUser.id}`;
+    const previousPoints = parseInt(localStorage.getItem(storageKey) || '0', 10);
+
+    if (points > previousPoints) {
+      // Lanzar Confetti si los puntos subieron (acertó un marcador exacto o parcial)
+      const duration = 3000;
+      const end = Date.now() + duration;
+
+      const frame = () => {
+        confetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: ['#00ff87', '#7000ff', '#ffd700']
+        });
+        confetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: ['#00ff87', '#7000ff', '#ffd700']
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      };
+      frame();
+
+      // Actualizar el nuevo récord
+      localStorage.setItem(storageKey, points.toString());
+    } else if (points < previousPoints) {
+      // Por si el admin corrige un resultado a la baja
+      localStorage.setItem(storageKey, points.toString());
+    }
+  }, [points, currentUser]);
 
   const pad = (n) => String(n).padStart(2, '0');
 
