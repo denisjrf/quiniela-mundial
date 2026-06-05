@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
-const { sendVerificationEmail } = require('../utils/email');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/email');
 
 // Registro de Usuario
 router.post('/register', async (req, res) => {
@@ -145,6 +145,94 @@ router.post('/verify', async (req, res) => {
   } catch (error) {
     console.error('Error en verificación:', error.message);
     return res.status(500).json({ error: 'Error interno del servidor en la verificación.' });
+  }
+});
+
+// Ruta para solicitar recuperación de contraseña (envía código por correo)
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Por favor, ingrese su correo electrónico.' });
+  }
+
+  try {
+    const userRes = await db.query('SELECT id, name, email FROM users WHERE email = $1', [email.toLowerCase().trim()]);
+
+    // Mensaje genérico por seguridad: no revelar si el email existe o no
+    if (userRes.rows.length === 0) {
+      return res.status(200).json({ message: 'Si el correo está registrado, recibirás un código de recuperación en tu bandeja de entrada.' });
+    }
+
+    const user = userRes.rows[0];
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+
+    await db.query(
+      'UPDATE users SET reset_code = $1, reset_code_expires = $2 WHERE id = $3',
+      [resetCode, resetExpires, user.id]
+    );
+
+    try {
+      await sendPasswordResetEmail(user.email, user.name, resetCode);
+      console.log(`🔑 Correo de recuperación enviado con éxito a ${user.email}`);
+    } catch (mailError) {
+      console.error('❌ Error enviando correo de recuperación:', mailError.message);
+      console.log(`💡 Código de recuperación de prueba (log local): ${resetCode}`);
+    }
+
+    return res.status(200).json({ message: 'Si el correo está registrado, recibirás un código de recuperación en tu bandeja de entrada.' });
+  } catch (error) {
+    console.error('Error en forgot-password:', error.message);
+    return res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+// Ruta para restablecer la contraseña con el código recibido
+router.post('/reset-password', async (req, res) => {
+  const { email, code, newPassword } = req.body;
+
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({ error: 'Por favor, complete todos los campos.' });
+  }
+
+  if (newPassword.length < 4) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 4 caracteres.' });
+  }
+
+  try {
+    const userRes = await db.query(
+      'SELECT id, reset_code, reset_code_expires FROM users WHERE email = $1',
+      [email.toLowerCase().trim()]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(400).json({ error: 'No se encontró una solicitud de recuperación válida.' });
+    }
+
+    const user = userRes.rows[0];
+
+    if (!user.reset_code || user.reset_code !== code.trim()) {
+      return res.status(400).json({ error: 'El código de recuperación es incorrecto.' });
+    }
+
+    if (new Date() > new Date(user.reset_code_expires)) {
+      return res.status(400).json({ error: 'El código de recuperación ha expirado. Solicita uno nuevo.' });
+    }
+
+    // Hashear nueva contraseña y limpiar campos de reset
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    await db.query(
+      'UPDATE users SET password_hash = $1, reset_code = NULL, reset_code_expires = NULL WHERE id = $2',
+      [passwordHash, user.id]
+    );
+
+    return res.status(200).json({ message: '¡Contraseña actualizada con éxito! Ya puedes iniciar sesión.' });
+  } catch (error) {
+    console.error('Error en reset-password:', error.message);
+    return res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });
 

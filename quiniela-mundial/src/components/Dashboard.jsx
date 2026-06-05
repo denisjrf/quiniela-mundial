@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { initialTeams, initialGroupMatches, initialKnockoutStage, getMatchKickoff } from '../data/worldCupData';
 
 export default function Dashboard({
   currentUser,
@@ -66,6 +67,76 @@ export default function Dashboard({
     championTeam = teams[finalMatch.winner];
   }
 
+  // --- CUENTA REGRESIVA AL PRÓXIMO PARTIDO ---
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [nextMatch, setNextMatch] = useState(null);
+
+  useEffect(() => {
+    // Recopilar todos los partidos con sus kickoffs
+    const allMatches = [];
+
+    initialGroupMatches.forEach(m => {
+      const kickoff = getMatchKickoff(m.id);
+      allMatches.push({
+        id: m.id,
+        team1: m.team1,
+        team2: m.team2,
+        kickoff,
+        label: `Grupo ${m.group} — Jornada ${m.date}`
+      });
+    });
+
+    const roundNames = {
+      roundOf32: '16vos de Final',
+      roundOf16: 'Octavos de Final',
+      quarterfinals: 'Cuartos de Final',
+      semifinals: 'Semifinal',
+      thirdPlace: 'Tercer Puesto',
+      final: 'Gran Final'
+    };
+
+    Object.keys(initialKnockoutStage).forEach(roundKey => {
+      initialKnockoutStage[roundKey].forEach(m => {
+        const kickoff = getMatchKickoff(m.id);
+        allMatches.push({
+          id: m.id,
+          team1: m.team1,
+          team2: m.team2,
+          kickoff,
+          label: roundNames[roundKey] || roundKey
+        });
+      });
+    });
+
+    // Ordenar por kickoff
+    allMatches.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+
+    const updateCountdown = () => {
+      const now = new Date();
+      const upcoming = allMatches.find(m => new Date(m.kickoff) > now);
+
+      if (!upcoming) {
+        setNextMatch(null);
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      setNextMatch(upcoming);
+      const diff = new Date(upcoming.kickoff) - now;
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      setCountdown({ days, hours, minutes, seconds });
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const pad = (n) => String(n).padStart(2, '0');
+
   return (
     <div className="fade-in dashboard-main">
       {/* Banner de Bienvenida */}
@@ -120,6 +191,80 @@ export default function Dashboard({
             ¡Completa el Bracket y corona a tu campeón!
           </p>
         </div>
+      </div>
+
+      {/* Cuenta Regresiva al Próximo Partido */}
+      <div className="glass-card" style={{ padding: '1.5rem 2rem', marginBottom: '1.5rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, var(--color-primary), var(--color-info), var(--color-accent))' }} />
+        {nextMatch ? (
+          <>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '0.5rem' }}>
+              ⏳ Próximo Partido — {nextMatch.label}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+              {nextMatch.team1 && teams[nextMatch.team1] ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <img
+                    src={`https://flagcdn.com/w40/${teams[nextMatch.team1].flag}.png`}
+                    alt={teams[nextMatch.team1].name}
+                    style={{ width: '32px', height: '22px', borderRadius: '3px', objectFit: 'cover' }}
+                  />
+                  <span style={{ fontWeight: 700, fontSize: '1rem' }}>{teams[nextMatch.team1].name}</span>
+                </div>
+              ) : (
+                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-secondary)' }}>Por definir</span>
+              )}
+              <span style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-accent)' }}>VS</span>
+              {nextMatch.team2 && teams[nextMatch.team2] ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <img
+                    src={`https://flagcdn.com/w40/${teams[nextMatch.team2].flag}.png`}
+                    alt={teams[nextMatch.team2].name}
+                    style={{ width: '32px', height: '22px', borderRadius: '3px', objectFit: 'cover' }}
+                  />
+                  <span style={{ fontWeight: 700, fontSize: '1rem' }}>{teams[nextMatch.team2].name}</span>
+                </div>
+              ) : (
+                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-secondary)' }}>Por definir</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {[
+                { value: countdown.days, label: 'Días' },
+                { value: countdown.hours, label: 'Horas' },
+                { value: countdown.minutes, label: 'Min' },
+                { value: countdown.seconds, label: 'Seg' }
+              ].map((unit, i) => (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{
+                    background: 'rgba(0, 255, 135, 0.08)',
+                    border: '1px solid rgba(0, 255, 135, 0.2)',
+                    borderRadius: '10px',
+                    padding: '0.6rem 0.9rem',
+                    minWidth: '60px',
+                    fontFamily: 'monospace',
+                    fontSize: '1.6rem',
+                    fontWeight: 800,
+                    color: 'var(--color-primary)',
+                    letterSpacing: '2px'
+                  }}>
+                    {pad(unit.value)}
+                  </div>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    {unit.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div>
+            <span style={{ fontSize: '1.5rem', display: 'block', marginBottom: '0.5rem' }}>🏆</span>
+            <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '1.1rem' }}>
+              ¡El torneo ha finalizado!
+            </span>
+          </div>
+        )}
       </div>
 
       {showChampModal && championTeam && (

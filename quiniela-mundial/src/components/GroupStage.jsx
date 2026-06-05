@@ -13,6 +13,23 @@ export default function GroupStage({
     return Date.now() > (new Date(kickoff).getTime() - 30 * 60 * 1000);
   };
 
+  const formatKickoff = (matchId) => {
+    const kickoff = getMatchKickoff(matchId);
+    const date = new Date(kickoff);
+    const day = date.getDate();
+    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const month = monthNames[date.getMonth()];
+    
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    
+    return `${day} ${month} - ${hours}:${minutes} ${ampm}`;
+  };
+
 
   // Estado local para controlar qué pestaña está activa en cada grupo ('matches' o 'standings')
   // Usamos un objeto { [groupName]: 'matches' | 'standings' }
@@ -152,7 +169,7 @@ export default function GroupStage({
                     const locked = isMatchLocked(match.id);
 
                     return (
-                      <div key={match.id} className={`match-item ${locked ? 'locked' : ''}`}>
+                      <div key={match.id} className={`match-item ${locked ? 'locked' : ''}`} style={{ paddingBottom: '1.2rem', paddingTop: '0.5rem' }}>
                         {/* Equipo 1 */}
                         <div className="match-team team1">
                           <span className="team-name-full" style={{ marginRight: '0.2rem' }}>{team1Obj.name}</span>
@@ -166,7 +183,10 @@ export default function GroupStage({
                         </div>
 
                         {/* Controles de Marcador */}
-                        <div className={`match-score-inputs ${locked ? 'locked' : ''}`}>
+                        <div className={`match-score-inputs ${locked ? 'locked' : ''}`} style={{ position: 'relative' }}>
+                          <span style={{ position: 'absolute', bottom: '-16px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            {formatKickoff(match.id)}
+                          </span>
                           <input
                             type="text"
                             inputMode="numeric"

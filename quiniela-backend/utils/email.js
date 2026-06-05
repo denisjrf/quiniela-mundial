@@ -57,6 +57,50 @@ const sendVerificationEmail = async (email, name, code) => {
   return transporter.sendMail(mailOptions);
 };
 
+/**
+ * Envía un correo con el código de recuperación de contraseña.
+ * @param {string} email - Correo del destinatario.
+ * @param {string} name - Nombre del destinatario.
+ * @param {string} code - Código numérico de 6 dígitos.
+ */
+const sendPasswordResetEmail = async (email, name, code) => {
+  const mailOptions = {
+    from: `"Quiniela Grupo Giraud 2026" <${process.env.SMTP_USER || 'no-reply@servis-web.com'}>`,
+    to: email,
+    subject: '🔑 Recuperar Contraseña - Quiniela Grupo Giraud 2026',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1a202c; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <div style="text-align: center; border-bottom: 2px solid #00ff87; padding-bottom: 20px; margin-bottom: 20px;">
+          <h1 style="color: #0f172a; margin: 0; font-size: 24px;">⚽ Quiniela Grupo Giraud 2026</h1>
+          <p style="color: #64748b; font-size: 14px; margin: 5px 0 0 0; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Recuperación de Contraseña</p>
+        </div>
+        
+        <h2 style="color: #0f172a; font-size: 18px; margin-top: 0;">¡Hola, ${name}!</h2>
+        <p style="font-size: 15px; line-height: 1.6; color: #334155; margin-bottom: 20px;">
+          Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en la <strong>Quiniela de Grupo Giraud Premium 2026</strong>. Ingresa el siguiente código en la aplicación para crear una nueva contraseña:
+        </p>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 18px; background-color: #f8fafc; border-radius: 10px; border: 1px dashed #00bb66;">
+          <span style="font-family: 'Courier New', monospace; font-size: 38px; font-weight: bold; letter-spacing: 6px; color: #00bb66;">${code}</span>
+        </div>
+        
+        <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 20px;">
+          Este código expira en <strong>15 minutos</strong>. Si tú no has solicitado restablecer tu contraseña, por favor ignora este correo con total tranquilidad. Tu cuenta permanecerá segura.
+        </p>
+        
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0; font-weight: bold;">Quiniela Grupo Giraud Premium © 2026</p>
+          <p style="margin: 4px 0 0 0;">Desarrollado y desplegado de forma segura en servidor corporativo PostgreSQL.</p>
+        </div>
+      </div>
+    `,
+    text: `Hola, ${name}!\n\nHemos recibido una solicitud para restablecer la contraseña de tu cuenta en la Quiniela de Grupo Giraud Premium 2026.\n\nIngresa el siguiente código en la aplicación para crear una nueva contraseña:\n\nCódigo: ${code}\n\nEste código expira en 15 minutos. Si no has solicitado restablecer tu contraseña, ignora este correo.\n\nQuiniela Grupo Giraud Premium © 2026`
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
 module.exports = {
-  sendVerificationEmail
+  sendVerificationEmail,
+  sendPasswordResetEmail
 };

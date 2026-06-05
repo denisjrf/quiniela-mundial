@@ -231,6 +231,14 @@ export default function App() {
   const [verificationCodeInput, setVerificationCodeInput] = useState('');
   const [verifying, setVerifying] = useState(false);
 
+  // --- ESTADOS PARA RECUPERACIÓN DE CONTRASEÑA ---
+  const [forgotPasswordStep, setForgotPasswordStep] = useState(null);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+
   // --- ESTADO DE NOTIFICACIONES FLOTANTES (TOAST) ---
   const [toast, setToast] = useState(null);
   const [showDiscardModal, setShowDiscardModal] = useState(false);
@@ -474,6 +482,73 @@ export default function App() {
       setAuthError(error.message);
     } finally {
       setVerifying(false);
+    }
+  };
+
+  // --- MANEJO DE RECUPERACIÓN DE CONTRASEÑA ---
+  const handleForgotPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setAuthError(null);
+    setAuthSuccess(null);
+    setResetting(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al procesar la solicitud.');
+      }
+
+      setAuthSuccess(data.message);
+      setForgotPasswordStep('reset');
+    } catch (error) {
+      setAuthError(error.message);
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setAuthError(null);
+    setAuthSuccess(null);
+    setResetting(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail, code: resetCode, newPassword: resetNewPassword })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al restablecer la contraseña.');
+      }
+
+      showToast('🔑 ¡Contraseña restablecida con éxito! Ya puedes iniciar sesión.', 'success');
+
+      // Limpiar estados y volver al login con email prellenado
+      const recoveredEmail = resetEmail;
+      setForgotPasswordStep(null);
+      setResetEmail('');
+      setResetCode('');
+      setResetNewPassword('');
+      setShowResetPassword(false);
+      setIsRegisterTab(false);
+      setAuthForm({ name: '', email: recoveredEmail, password: '', id_tipo_usuario: 2 });
+      setAuthSuccess('¡Contraseña actualizada! Ingresa tu nueva contraseña para comenzar.');
+    } catch (error) {
+      setAuthError(error.message);
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -830,6 +905,228 @@ export default function App() {
 
   // --- RENDER VISTA PÚBLICA DE INICIO DE SESIÓN / REGISTRO ---
   if (!token) {
+    // Pantalla de recuperación de contraseña - Paso 1: Solicitar código
+    if (forgotPasswordStep === 'email') {
+      return (
+        <div className="container" style={{ display: 'flex', minHeight: '90vh', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="theme-toggle-container">
+            <button
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              className="theme-toggle-btn"
+              title={theme === 'light' ? 'Cambiar a Modo Oscuro 🌙' : 'Cambiar a Modo Claro ☀️'}
+            >
+              {theme === 'light' ? '🌙' : '☀️'}
+            </button>
+          </div>
+          <div className="glass-card fade-in" style={{ maxWidth: '480px', width: '100%', padding: '2.5rem 2rem', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)' }}>
+
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <span className="logo-icon" style={{ fontSize: '3rem', display: 'block', marginBottom: '0.5rem' }}>🔑</span>
+              <h1 className="gradient-text" style={{ fontSize: '1.85rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
+                RECUPERAR CONTRASEÑA
+              </h1>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.5rem', lineHeight: 1.4 }}>
+                Ingresa tu correo electrónico y te enviaremos un código de recuperación de 6 dígitos.
+              </p>
+            </div>
+
+            <form onSubmit={handleForgotPasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {authError && (
+                <div style={{ background: 'rgba(255, 0, 85, 0.08)', border: '1px solid rgba(255, 0, 85, 0.2)', padding: '0.65rem 0.85rem', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-danger)' }}>
+                  ⚠️ {authError}
+                </div>
+              )}
+
+              <div>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
+                  Correo Electrónico
+                </label>
+                <input
+                  type="email"
+                  className="profile-input"
+                  placeholder="ejemplo@logistica.com"
+                  required
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                />
+              </div>
+
+              <button type="submit" className="primary-btn" style={{ padding: '0.8rem', marginTop: '0.5rem', fontSize: '0.95rem' }} disabled={resetting}>
+                {resetting ? 'Enviando...' : 'Enviar Código de Recuperación 📧'}
+              </button>
+            </form>
+
+            <div style={{ textAlign: 'center', marginTop: '1.75rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+              <button
+                onClick={() => {
+                  setForgotPasswordStep(null);
+                  setResetEmail('');
+                  setAuthError(null);
+                  setAuthSuccess(null);
+                }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Volver al Inicio de Sesión
+              </button>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    // Pantalla de recuperación de contraseña - Paso 2: Ingresar código + nueva contraseña
+    if (forgotPasswordStep === 'reset') {
+      return (
+        <div className="container" style={{ display: 'flex', minHeight: '90vh', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="theme-toggle-container">
+            <button
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              className="theme-toggle-btn"
+              title={theme === 'light' ? 'Cambiar a Modo Oscuro 🌙' : 'Cambiar a Modo Claro ☀️'}
+            >
+              {theme === 'light' ? '🌙' : '☀️'}
+            </button>
+          </div>
+          <div className="glass-card fade-in" style={{ maxWidth: '480px', width: '100%', padding: '2.5rem 2rem', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)' }}>
+
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <span className="logo-icon" style={{ fontSize: '3rem', display: 'block', marginBottom: '0.5rem' }}>🔐</span>
+              <h1 className="gradient-text" style={{ fontSize: '1.85rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
+                NUEVA CONTRASEÑA
+              </h1>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.5rem', lineHeight: 1.4 }}>
+                Ingresa el código enviado a:<br />
+                <strong style={{ color: 'var(--color-primary)' }}>{resetEmail}</strong>
+              </p>
+            </div>
+
+            <form onSubmit={handleResetPasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {authError && (
+                <div style={{ background: 'rgba(255, 0, 85, 0.08)', border: '1px solid rgba(255, 0, 85, 0.2)', padding: '0.65rem 0.85rem', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-danger)' }}>
+                  ⚠️ {authError}
+                </div>
+              )}
+
+              {authSuccess && (
+                <div style={{ background: 'rgba(0, 255, 135, 0.08)', border: '1px solid rgba(0, 255, 135, 0.2)', padding: '0.65rem 0.85rem', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-primary)' }}>
+                  ✔️ {authSuccess}
+                </div>
+              )}
+
+              <div>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: '0.6rem', textAlign: 'center' }}>
+                  Código de Recuperación (6 dígitos)
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  className="profile-input"
+                  placeholder="123456"
+                  required
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ''))}
+                  style={{
+                    fontSize: '1.75rem',
+                    textAlign: 'center',
+                    letterSpacing: '8px',
+                    fontFamily: 'monospace',
+                    fontWeight: 700,
+                    color: 'var(--color-primary)'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
+                  Nueva Contraseña
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
+                  <input
+                    type={showResetPassword ? 'text' : 'password'}
+                    className="profile-input"
+                    placeholder="••••••••"
+                    required
+                    minLength={4}
+                    value={resetNewPassword}
+                    onChange={(e) => setResetNewPassword(e.target.value)}
+                    style={{ paddingRight: '3rem' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPassword(!showResetPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '1rem',
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                      outline: 'none',
+                      userSelect: 'none'
+                    }}
+                    title={showResetPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {showResetPassword ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" style={{ width: '1.25rem', height: '1.25rem' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" style={{ width: '1.25rem', height: '1.25rem' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <button type="submit" className="primary-btn" style={{ padding: '0.8rem', marginTop: '0.5rem', fontSize: '0.95rem' }} disabled={resetting}>
+                {resetting ? 'Restableciendo...' : 'Restablecer Contraseña 🔐'}
+              </button>
+            </form>
+
+            <div style={{ textAlign: 'center', marginTop: '1.75rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+              <button
+                onClick={() => {
+                  setForgotPasswordStep('email');
+                  setResetCode('');
+                  setResetNewPassword('');
+                  setShowResetPassword(false);
+                  setAuthError(null);
+                  setAuthSuccess(null);
+                }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Volver a enviar código
+              </button>
+              <span style={{ color: 'var(--text-secondary)', margin: '0 0.5rem' }}>|</span>
+              <button
+                onClick={() => {
+                  setForgotPasswordStep(null);
+                  setResetEmail('');
+                  setResetCode('');
+                  setResetNewPassword('');
+                  setShowResetPassword(false);
+                  setAuthError(null);
+                  setAuthSuccess(null);
+                }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Volver al Inicio de Sesión
+              </button>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
     if (verificationEmail) {
       return (
         <div className="container" style={{ display: 'flex', minHeight: '90vh', alignItems: 'center', justifyContent: 'center' }}>
@@ -1051,6 +1348,23 @@ export default function App() {
               </div>
             </div>
 
+            {!isRegisterTab && (
+              <div style={{ textAlign: 'right', marginTop: '-0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotPasswordStep('email');
+                    setResetEmail(authForm.email || '');
+                    setAuthError(null);
+                    setAuthSuccess(null);
+                  }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
+            )}
+
             <button type="submit" className="primary-btn" style={{ padding: '0.8rem', marginTop: '0.5rem', fontSize: '0.95rem' }} disabled={loading}>
               {loading ? 'Procesando...' : isRegisterTab ? 'Crear Cuenta 🚀' : 'Iniciar Sesión ⚽'}
             </button>
@@ -1093,14 +1407,14 @@ export default function App() {
       </div>
       {/* Encabezado Principal */}
       <header>
-        <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginLeft: '1.5rem' }}>
           <img
             src={theme === 'light' ? `${import.meta.env.BASE_URL}logo_light_theme.png` : `${import.meta.env.BASE_URL}logo_dark_theme.png`}
             alt="Grupo Giraud"
-            style={{ height: '35px', width: 'auto', objectFit: 'contain' }}
+            style={{ height: '72px', width: 'auto', objectFit: 'contain' }}
           />
-          <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1rem', display: 'flex', alignItems: 'center' }}>
-            <h1 className="gradient-text" style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>QUINIELA MUNDIAL</h1>
+          <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1.25rem', display: 'flex', alignItems: 'center' }}>
+            <h1 className="gradient-text" style={{ fontSize: '0.9rem', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>QUINIELA MUNDIAL</h1>
           </div>
         </div>
 

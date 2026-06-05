@@ -82,6 +82,12 @@ const initDatabase = async () => {
     await client.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS id_tipo_usuario INT REFERENCES tipo_usuario(id);
     `);
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code TEXT;
+    `);
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_expires TIMESTAMP;
+    `);
 
     // Asignar Empleado (2) por defecto a usuarios que no tengan tipo de usuario asignado
     await client.query(`
