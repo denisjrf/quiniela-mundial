@@ -18,11 +18,14 @@ export default function AdminPanel({
   onRealKnockoutTeamChange,
   onRealKnockoutPenaltiesChange
 }) {
-  const [activeTab, setActiveTab] = useState('A'); // Pestañas 'A'..'L', 'knockout', 'users' o 'phases'
+  const [activeTab, setActiveTab] = useState('A'); // Pestañas 'A'..'L', 'knockout', 'users', 'phases' o 'bulk_email'
   const [usersList, setUsersList] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [togglingUserId, setTogglingUserId] = useState(null);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailMessage, setEmailMessage] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const groupKeys = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -142,6 +145,37 @@ export default function AdminPanel({
     if (showToast) showToast('📊 Excel de usuarios exportado con éxito', 'success');
   };
 
+  const handleSendBulkEmail = async () => {
+    if (!emailSubject.trim() || !emailMessage.trim()) return;
+    setSendingEmail(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/broadcast-email`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          subject: emailSubject.trim(),
+          message: emailMessage.trim()
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (showToast) showToast(data.message || 'Correos masivos enviados con éxito.', 'success');
+        setEmailSubject('');
+        setEmailMessage('');
+      } else {
+        if (showToast) showToast(data.error || 'Error al enviar correos', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      if (showToast) showToast('Error de conexión al enviar correos', 'error');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const handleScoreInput = (matchId, teamKey, val) => {
     if (val === '' || /^\d+$/.test(val)) {
       onRealMatchScoreChange(matchId, teamKey, val);
@@ -247,6 +281,12 @@ export default function AdminPanel({
         >
           👥 Gestión de Accesos
         </button>
+        <button 
+          className={`tab-btn ${activeTab === 'bulk_email' ? 'active' : ''}`}
+          onClick={() => setActiveTab('bulk_email')}
+        >
+          ✉️ Correo Masivo
+        </button>
         {isSuperAdmin && (
           <button 
             className={`tab-btn ${activeTab === 'phases' ? 'active' : ''}`}
@@ -261,7 +301,7 @@ export default function AdminPanel({
       <div className="glass-card">
         
         {/* VISTAS DE GRUPOS (Pestañas A..L) */}
-        {activeTab !== 'knockout' && activeTab !== 'users' && activeTab !== 'phases' && (
+        {activeTab !== 'knockout' && activeTab !== 'users' && activeTab !== 'phases' && activeTab !== 'bulk_email' && (
           <div>
             <h4 style={{ marginBottom: '1rem', fontWeight: 700 }}>Partidos del Grupo {activeTab}</h4>
             <div className="admin-matches-grid">
@@ -893,6 +933,61 @@ export default function AdminPanel({
                 </button>
               </div>
 
+            </div>
+          </div>
+        )}
+
+        {/* VISTA DE ENVÍO DE CORREO MASIVO */}
+        {activeTab === 'bulk_email' && (
+          <div className="fade-in">
+            <h4 style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.25rem' }}>✉️ Envío de Correo Masivo a Participantes</h4>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '1.5rem' }}>
+              Redacta un mensaje para enviarlo por correo electrónico a todos los participantes con cuenta verificada en el sistema.
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-primary)' }}>Asunto del Correo</label>
+                <input 
+                  type="text" 
+                  className="profile-input" 
+                  placeholder="Ej: ⚽ ¡La Quiniela del Mundial ha comenzado!" 
+                  style={{ width: '100%', padding: '0.75rem 1rem' }}
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-primary)' }}>Mensaje del Correo</label>
+                <textarea 
+                  className="profile-input" 
+                  placeholder="Escribe el cuerpo del correo aquí... Se enviará con formato personalizado." 
+                  style={{ width: '100%', minHeight: '220px', padding: '0.75rem 1rem', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
+                  value={emailMessage}
+                  onChange={(e) => setEmailMessage(e.target.value)}
+                />
+              </div>
+              
+              <button 
+                className="primary-btn" 
+                style={{ 
+                  background: 'linear-gradient(135deg, var(--color-primary) 0%, #00bb66 100%)', 
+                  color: '#060913',
+                  alignSelf: 'flex-start',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.75rem 1.5rem',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  boxShadow: '0 4px 12px rgba(0, 255, 135, 0.15)'
+                }}
+                onClick={handleSendBulkEmail}
+                disabled={sendingEmail || !emailSubject.trim() || !emailMessage.trim()}
+              >
+                {sendingEmail ? '📤 Enviando correos...' : '✉️ Enviar Correo Masivo'}
+              </button>
             </div>
           </div>
         )}

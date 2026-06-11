@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const auth = require('../middleware/auth');
+const { sendBroadcastEmail } = require('../utils/email');
 
 // Guardar o actualizar los marcadores reales de la competición (Solo Super Administrador - Denis)
 router.post('/results', auth, async (req, res) => {
@@ -114,6 +115,59 @@ router.put('/users/:id/toggle-admin', auth, async (req, res) => {
   } catch (error) {
     console.error('Error al alternar privilegios de administrador:', error.message);
     return res.status(500).json({ error: 'Error interno alternando privilegios en el servidor.' });
+  }
+});
+
+// Enviar un correo masivo personalizado a todos los usuarios verificados (Solo Admins)
+router.post('/broadcast-email', auth, async (req, res) => {
+  const { subject, message } = req.body;
+
+  if (!subject || !message) {
+    return res.status(400).json({ error: 'Falta el asunto o el cuerpo del mensaje.' });
+  }
+
+  const isAdmin = req.user && (
+    req.user.is_admin || 
+    req.user.email === 'denis@logistica.com' ||
+    req.user.email.toLowerCase().includes('denis')
+  );
+
+  if (!isAdmin) {
+    return res.status(403).json({ error: 'Acceso denegado. No tiene privilegios de administración.' });
+  }
+
+  try {
+    // Obtener todos los usuarios verificados del sistema
+    const usersRes = await db.query('SELECT name, email FROM users WHERE is_verified = true');
+    const users = usersRes.rows;
+
+    if (users.length === 0) {
+      return res.status(200).json({ message: 'No hay usuarios verificados registrados a quienes enviar el correo.' });
+    }
+
+    // Enviar correos uno por uno de forma asíncrona pero controlando errores
+    const sentList = [];
+    const failedList = [];
+
+    for (const user of users) {
+      try {
+        await sendBroadcastEmail(user.email, user.name, subject, message);
+        sentList.push(user.email);
+      } catch (err) {
+        console.error(`Error enviando correo masivo a ${user.email}:`, err.message);
+        failedList.push({ email: user.email, error: err.message });
+      }
+    }
+
+    return res.status(200).json({
+      message: `Proceso de envío finalizado. Enviados con éxito: ${sentList.length}. Fallidos: ${failedList.length}.`,
+      sentCount: sentList.length,
+      failedCount: failedList.length,
+      failures: failedList
+    });
+  } catch (error) {
+    console.error('Error general enviando correo masivo:', error.message);
+    return res.status(500).json({ error: 'Error interno procesando el envío masivo en el servidor.' });
   }
 });
 

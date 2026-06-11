@@ -100,7 +100,44 @@ const sendPasswordResetEmail = async (email, name, code) => {
   return transporter.sendMail(mailOptions);
 };
 
+/**
+ * Envía un correo masivo personalizado de anuncios o boletín a un usuario.
+ * @param {string} email - Correo del destinatario.
+ * @param {string} name - Nombre del destinatario.
+ * @param {string} subject - Asunto del correo.
+ * @param {string} message - Mensaje en texto plano o HTML.
+ */
+const sendBroadcastEmail = async (email, name, subject, message) => {
+  const formattedMessage = message.replace(/\n/g, '<br/>');
+  const mailOptions = {
+    from: `"Quiniela Grupo Giraud 2026" <${process.env.SMTP_USER || 'no-reply@servis-web.com'}>`,
+    to: email,
+    subject: subject,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1a202c; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <div style="text-align: center; border-bottom: 2px solid #00ff87; padding-bottom: 20px; margin-bottom: 20px;">
+          <h1 style="color: #0f172a; margin: 0; font-size: 24px;">⚽ Quiniela Grupo Giraud 2026</h1>
+        </div>
+        
+        <h2 style="color: #0f172a; font-size: 18px; margin-top: 0;">¡Hola, ${name}!</h2>
+        <div style="font-size: 15px; line-height: 1.6; color: #334155; margin-bottom: 20px;">
+          ${formattedMessage}
+        </div>
+        
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8;">
+          <p style="margin: 0; font-weight: bold;">Quiniela Grupo Giraud Premium © 2026</p>
+          <p style="margin: 4px 0 0 0;">Recibiste este correo como usuario registrado en nuestra Quiniela.</p>
+        </div>
+      </div>
+    `,
+    text: `¡Hola, ${name}!\n\n${message}\n\nQuiniela Grupo Giraud Premium © 2026`
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
 module.exports = {
   sendVerificationEmail,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendBroadcastEmail
 };
