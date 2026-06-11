@@ -1166,6 +1166,86 @@ header {
   50% { opacity: 1; filter: drop-shadow(0 0 2px var(--color-danger)); }
 }
 
+/* Custom Animation to prevent transform translateX overrides */
+.floating-save-bar-animate {
+  animation: fadeInBar 0.4s ease-out forwards;
+}
+
+@keyframes fadeInBar {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* Floating Save Bar Styling */
+.floating-save-bar {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--color-primary);
+  box-shadow: 0 0 20px rgba(0, 255, 135, 0.3);
+  padding: 0.85rem 1.5rem;
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  width: max-content;
+  max-width: 90%;
+  box-sizing: border-box;
+}
+
+.floating-save-bar-text {
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.floating-save-bar-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.discard-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--text-primary);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.discard-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.discard-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.floating-save-bar-actions .primary-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  border-radius: 20px;
+}
+
+.save-btn-text-mobile {
+  display: none;
+}
+
 /* ========================================== */
 /* RESPONSIVE DESIGN & MOBILE OPTIMIZATIONS   */
 /* ========================================== */
@@ -1342,6 +1422,46 @@ header {
     width: 20px;
     height: 20px;
     font-size: 0.65rem;
+  }
+
+  /* Floating Save Bar Mobile Adjustments */
+  .floating-save-bar {
+    position: fixed;
+    bottom: 5.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    flex-direction: row;
+    padding: 0.6rem 1rem;
+    border-radius: 30px;
+    width: max-content;
+    max-width: 95%;
+    gap: 0.75rem;
+    box-shadow: 0 0 20px rgba(0, 255, 135, 0.3);
+  }
+
+  .floating-save-bar-text {
+    display: none;
+  }
+
+  .floating-save-bar-actions {
+    width: auto;
+    justify-content: center;
+  }
+
+  .floating-save-bar-actions button {
+    white-space: nowrap;
+    padding: 0.5rem 1rem !important;
+    font-size: 0.8rem !important;
+    border-radius: 20px;
+  }
+
+  .save-btn-text-desktop {
+    display: none;
+  }
+
+  .save-btn-text-mobile {
+    display: inline;
   }
 }
 

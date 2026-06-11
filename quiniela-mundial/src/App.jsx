@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { initialTeams, initialGroupMatches, initialKnockoutStage, getMatchKickoff } from './data/worldCupData';
 import Dashboard from './components/Dashboard';
 import GroupStage from './components/GroupStage';
 import KnockoutStage from './components/KnockoutStage';
-import Leaderboard from './components/Leaderboard';
 import AdminPanel from './components/AdminPanel';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -196,6 +195,8 @@ export default function App() {
     }
     localStorage.setItem('quiniela_theme', theme);
   }, [theme]);
+
+
 
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -868,7 +869,6 @@ export default function App() {
     let points = 0;
     let exactHits = 0;
     let outcomeHits = 0;
-    const groupMatchesCompleted = groupMatches.filter(m => m.team1Score !== '' && m.team2Score !== '').length;
 
     // Calcular en caliente localmente para el Dashboard
     groupMatches.forEach(pred => {
@@ -1640,27 +1640,15 @@ export default function App() {
 
       {/* Barra Flotante de Guardado de Cambios (Excelente Micro-interacción!) */}
       {unsavedChanges && !loading && (
-        <div className="fade-in" style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', background: 'rgba(15, 23, 42, 0.95)', border: '1px solid var(--color-primary)', boxShadow: '0 0 20px rgba(0, 255, 135, 0.3)', padding: '0.85rem 1.5rem', borderRadius: '30px', display: 'flex', alignItems: 'center', gap: '1.25rem', zIndex: 1000, backdropFilter: 'blur(10px)' }}>
-          <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600 }}>
+        <div className="floating-save-bar-animate floating-save-bar">
+          <span className="floating-save-bar-text">
             ⚠️ Tienes cambios sin guardar en tu Quiniela
           </span>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div className="floating-save-bar-actions">
             <button
               onClick={handleDiscardChanges}
               disabled={saving}
-              style={{
-                background: 'transparent',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                color: 'var(--text-primary)',
-                padding: '0.5rem 1rem',
-                borderRadius: '20px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-              onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+              className="discard-btn"
             >
               🗑️ Descartar
             </button>
@@ -1668,9 +1656,15 @@ export default function App() {
               className="primary-btn"
               onClick={handleSavePredictions}
               disabled={saving}
-              style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
             >
-              {saving ? 'Guardando...' : '💾 Guardar en Base de Datos'}
+              {saving ? (
+                'Guardando...'
+              ) : (
+                <>
+                  <span className="save-btn-text-desktop">💾 Guardar en Base de Datos</span>
+                  <span className="save-btn-text-mobile">💾 Guardar</span>
+                </>
+              )}
             </button>
           </div>
         </div>
