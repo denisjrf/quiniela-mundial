@@ -147,6 +147,13 @@ router.post('/save', auth, async (req, res) => {
       [req.user.id, JSON.stringify(sanitizedGroup), JSON.stringify(sanitizedKnockout)]
     );
 
+    // 4.1. Registrar en la tabla de auditoría (predictions_history)
+    await db.query(
+      `INSERT INTO predictions_history (user_id, changed_by_user_id, action, group_predictions, knockout_predictions)
+       VALUES ($1, $1, 'USER_SAVE', $2, $3)`,
+      [req.user.id, JSON.stringify(sanitizedGroup), JSON.stringify(sanitizedKnockout)]
+    );
+
     return res.status(200).json({ message: 'Predicciones guardadas con éxito.' });
   } catch (error) {
     console.error('Error al guardar predicciones:', error.message);
