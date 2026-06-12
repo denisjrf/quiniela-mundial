@@ -49,9 +49,21 @@ body {
   background-color: var(--bg-main);
   color: var(--text-primary);
   min-height: 100vh;
-  overflow-x: hidden;
+  /* Use clip instead of hidden to prevent iOS scroll freezing bugs */
+  overflow-x: clip;
+}
+
+/* Fix iOS background-attachment: fixed bug that causes clipping and scroll issues */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   background-image: var(--bg-gradient);
-  background-attachment: fixed;
+  z-index: -1;
+  pointer-events: none;
 }
 
 /* Custom Scrollbar */
@@ -399,10 +411,14 @@ header {
   gap: 0.5rem;
   font-size: 0.85rem;
   font-weight: 600;
+  min-width: 0;
 }
 
 .team-name-full {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .match-team.team1 {
@@ -1628,4 +1644,120 @@ body.light-theme .hero-banner p {
   transform: scale(1.08);
 }
 
+/* ========================================== */
+/* UI/UX REFINEMENTS FOR MOBILE & TABLET      */
+/* ========================================== */
 
+/* TABLET BREAKPOINT (Middle ground) */
+@media (max-width: 968px) and (min-width: 501px) {
+  .groups-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+/* UNIVERSAL FLOATING SAVE BAR FIXES */
+/* Resolvemos el problema de la captura cortada verticalmente usando env(safe-area-inset-bottom)
+   y asegurando que los botones nunca rebasen la pantalla horizontalmente */
+.floating-save-bar {
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 9999 !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 95% !important;
+}
+
+.floating-save-bar-actions {
+  gap: 0.5rem !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+}
+
+/* Ocultar el texto de advertencia en tablets para emular la "captura ideal" */
+@media (max-width: 968px) {
+  .floating-save-bar-text {
+    display: none !important;
+  }
+}
+
+/* EXTREMELY SMALL SCREENS REFINEMENTS (iPhone SE, Galaxy, etc.) */
+@media (max-width: 500px) {
+  /* 1. Reclamar espacio muerto a los lados en móviles */
+  .container {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+  
+  .glass-card {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  /* 2. Compact the Header & Override inline styles */
+  header {
+    margin-bottom: 1rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  .logo-section {
+    margin-left: 0 !important;
+    gap: 0.5rem !important;
+    padding-right: 0 !important;
+  }
+
+  .logo-section img {
+    height: 45px !important;
+    max-width: 60% !important;
+  }
+
+  .logo-section h1 {
+    font-size: 1.1rem !important;
+  }
+
+  /* 3. Fix for Admin Group Tabs wrapping naturally */
+  .group-tabs {
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+  }
+  
+  /* 4. Aseguramos que los botones de guardar quepan en pantallas muy muy estrechas */
+  .floating-save-bar-actions button {
+    padding: 0.5rem 0.8rem !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+/* BRACKET SCROLL INDICATOR */
+.bracket-wrapper {
+  position: relative;
+}
+
+.bracket-wrapper::after {
+  content: "→ Desliza para ver más fases";
+  position: absolute;
+  top: 0.5rem;
+  right: 1rem;
+  font-size: 0.75rem;
+  color: var(--color-accent);
+  background: rgba(15, 23, 42, 0.8);
+  padding: 0.3rem 0.6rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  pointer-events: none;
+  opacity: 0.8;
+  animation: pulseHint 2s infinite;
+  z-index: 10;
+}
+
+@keyframes pulseHint {
+  0%, 100% { opacity: 0.6; transform: translateX(0); }
+  50% { opacity: 1; transform: translateX(-5px); }
+}
+
+@media (min-width: 1700px) {
+  .bracket-wrapper::after {
+    display: none;
+  }
+}

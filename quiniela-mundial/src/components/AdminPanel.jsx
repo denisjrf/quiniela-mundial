@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import GroupStage from './GroupStage';
+import KnockoutStage from './KnockoutStage';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
@@ -26,6 +28,12 @@ export default function AdminPanel({
   const [emailSubject, setEmailSubject] = useState('');
   const [emailMessage, setEmailMessage] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+
+  // Estados para ver la quiniela de un usuario
+  const [viewingUserPredictions, setViewingUserPredictions] = useState(null);
+  const [userPredictionsData, setUserPredictionsData] = useState(null);
+  const [loadingPredictions, setLoadingPredictions] = useState(false);
+  const [predictionTab, setPredictionTab] = useState('grupos'); // 'grupos' o 'eliminatorias'
 
   const groupKeys = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -173,6 +181,32 @@ export default function AdminPanel({
       if (showToast) showToast('Error de conexión al enviar correos', 'error');
     } finally {
       setSendingEmail(false);
+    }
+  };
+
+  const handleViewUserPredictions = async (user) => {
+    setViewingUserPredictions(user);
+    setLoadingPredictions(true);
+    setUserPredictionsData(null);
+    setPredictionTab('grupos');
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/users/${user.id}/predictions`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserPredictionsData(data);
+      } else {
+        const err = await res.json();
+        if (showToast) showToast(err.error || 'Error al cargar quiniela', 'error');
+        setViewingUserPredictions(null);
+      }
+    } catch (e) {
+      console.error(e);
+      if (showToast) showToast('Error de conexión', 'error');
+      setViewingUserPredictions(null);
+    } finally {
+      setLoadingPredictions(false);
     }
   };
 
@@ -835,6 +869,26 @@ export default function AdminPanel({
                             {u.is_admin ? '👑 Administrador' : '⚽ Participante'}
                           </span>
 
+                          {/* Botón para ver predicciones (Solo Super Administrador) */}
+                          {isSuperAdmin && (
+                            <button
+                              className="secondary-btn"
+                              style={{ 
+                                padding: '0.4rem 0.85rem', 
+                                fontSize: '0.75rem',
+                                border: '1px solid var(--color-primary)',
+                                color: 'var(--color-primary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                boxShadow: 'none'
+                              }}
+                              onClick={() => handleViewUserPredictions(u)}
+                            >
+                              👁️ Ver Quiniela
+                            </button>
+                          )}
+
                           {/* Control de roles (Solo Super Administrador Denis puede promover/degradar) */}
                           {isSuperAdmin && !isTargetSuper && (
                             <button
@@ -993,6 +1047,98 @@ export default function AdminPanel({
         )}
 
       </div>
+
+      {/* Modal de Vista de Quiniela de Usuario (Solo Super Admin) */}
+      {viewingUserPredictions && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(6, 9, 19, 0.95)',
+          zIndex: 1000,
+          display: 'flex', flexDirection: 'column',
+          overflowY: 'auto'
+        }}>
+          <div style={{
+            background: 'var(--card-bg)',
+            minHeight: '100%',
+            width: '100%',
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: '2rem',
+            position: 'relative'
+          }}>
+            <button 
+              onClick={() => setViewingUserPredictions(null)}
+              style={{
+                position: 'fixed', top: '2rem', right: '2rem',
+                background: 'rgba(255, 0, 85, 0.1)',
+                border: '1px solid rgba(255, 0, 85, 0.3)',
+                color: 'var(--color-danger)',
+                width: '45px', height: '45px', borderRadius: '50%',
+                fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', zIndex: 1010
+              }}
+            >
+              ✖
+            </button>
+
+            <div style={{ marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+              <h2 className="gradient-text" style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>
+                Quiniela de {viewingUserPredictions.name}
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                Modo Consulta (Solo Lectura)
+              </p>
+            </div>
+
+            {loadingPredictions ? (
+              <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-primary)' }}>
+                <h2>🔄 Cargando predicciones...</h2>
+              </div>
+            ) : userPredictionsData ? (
+              <div>
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+                  <button 
+                    className={`tab-btn ${predictionTab === 'grupos' ? 'active' : ''}`}
+                    onClick={() => setPredictionTab('grupos')}
+                  >
+                    Fase de Grupos
+                  </button>
+                  <button 
+                    className={`tab-btn ${predictionTab === 'eliminatorias' ? 'active' : ''}`}
+                    onClick={() => setPredictionTab('eliminatorias')}
+                  >
+                    Eliminatorias
+                  </button>
+                </div>
+
+                {predictionTab === 'grupos' && (
+                  <GroupStage
+                    groupMatches={userPredictionsData.group_predictions || []}
+                    teams={teams}
+                    onMatchScoreChange={() => {}}
+                    faseLocked={true}
+                  />
+                )}
+
+                {predictionTab === 'eliminatorias' && (
+                  <KnockoutStage
+                    knockoutStage={userPredictionsData.knockout_predictions || { roundOf32: [], roundOf16: [], quarterfinals: [], semifinals: [], thirdPlace: [], final: [] }}
+                    teams={teams}
+                    onKnockoutScoreChange={() => {}}
+                    onSelectWinner={() => {}}
+                    groupWinnersReady={true}
+                    faseLocked={true}
+                  />
+                )}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)' }}>
+                <h3>No se pudieron cargar los datos.</h3>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

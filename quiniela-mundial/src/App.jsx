@@ -907,20 +907,23 @@ export default function App() {
     return { points, exactHits, outcomeHits };
   })();
 
-  const filteredLeaderboard = leaderboard.filter(row => (row.id_tipo_usuario || 2) === (user?.id_tipo_usuario || 2));
-  const rank = filteredLeaderboard.findIndex(p => p.id === user?.id) + 1 || '-';
-
-  // Evaluar si todos los grupos de la quiniela activa tienen predicciones completas
-  const groupWinnersReady = groupMatches.every(
-    m => m.team1Score !== '' && m.team2Score !== ''
-  );
-
   // Determinar si el usuario conectado es administrador (Super Admin o Admin asignado)
   const isAdmin = user && (
     user.is_admin === true ||
     user.email === 'denis@logistica.com' ||
     user.email.toLowerCase().includes('denis') ||
     user.email.toLowerCase().includes('admin')
+  );
+
+  const filteredLeaderboard = isAdmin 
+    ? leaderboard 
+    : leaderboard.filter(row => (row.id_tipo_usuario || 2) === (user?.id_tipo_usuario || 2));
+  
+  const rank = filteredLeaderboard.findIndex(p => p.id === user?.id) + 1 || '-';
+
+  // Evaluar si todos los grupos de la quiniela activa tienen predicciones completas
+  const groupWinnersReady = groupMatches.every(
+    m => m.team1Score !== '' && m.team2Score !== ''
   );
 
   // --- RENDER VISTA PÚBLICA DE INICIO DE SESIÓN / REGISTRO ---
@@ -1412,6 +1415,83 @@ export default function App() {
     );
   }
 
+  const renderLeaderboardTable = (data, title, badgeColor) => {
+    if (!data || data.length === 0) return null;
+    return (
+      <div style={{ marginBottom: title ? '2.5rem' : '0' }}>
+        {title && (
+          <h4 style={{ 
+            color: badgeColor || 'var(--color-primary)', 
+            marginBottom: '1.2rem', 
+            paddingBottom: '0.6rem', 
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            fontSize: '1.1rem',
+            fontWeight: '800'
+          }}>
+            {title}
+          </h4>
+        )}
+        <div className="leaderboard-container-scroll">
+          <div className="leaderboard-list">
+            <div className="leaderboard-row header">
+              <div className="rank-cell">Pos</div>
+              <div className="name-cell" style={{ paddingLeft: '0.5rem' }}>Participante</div>
+              <div>Pronósticos</div>
+              <div>Aciertos (Ex/Sm)</div>
+              <div className="points-cell">Puntos</div>
+            </div>
+
+            {data.map((row, index) => {
+              const isRank1 = index === 0;
+              const isRank2 = index === 1;
+              const isRank3 = index === 2;
+              const isCurrentUser = row.id === user?.id;
+
+              return (
+                <div
+                  key={row.id}
+                  className={`leaderboard-row ${isCurrentUser ? 'highlight' : ''}`}
+                  style={{ borderLeft: isCurrentUser ? '3px solid var(--color-primary)' : '1px solid var(--border-color)' }}
+                >
+                  <div className={`rank-cell ${isRank1 ? 'top-1' : isRank2 ? 'top-2' : isRank3 ? 'top-3' : ''}`}>
+                    {isRank1 ? '🥇' : isRank2 ? '🥈' : isRank3 ? '🥉' : `${index + 1}`}
+                  </div>
+
+                  <div className="name-cell">
+                    <div className="profile-avatar" style={{
+                      width: '24px',
+                      height: '24px',
+                      fontSize: '0.75rem',
+                      background: isCurrentUser
+                        ? 'linear-gradient(135deg, var(--color-primary), var(--color-info))'
+                        : 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.1))'
+                    }}>
+                      {row.name.charAt(0)}
+                    </div>
+                    <div>
+                      <span style={{ fontWeight: isCurrentUser ? '800' : '600' }}>{row.name}</span>
+                      {isCurrentUser && <span style={{ marginLeft: '0.4rem', fontSize: '0.6rem', color: 'var(--color-primary)', fontWeight: '700' }}>(Tú)</span>}
+                    </div>
+                  </div>
+
+                  <div>{row.predictionsCount} / 104</div>
+
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>{row.exactHits}</span>
+                    {' / '}
+                    <span style={{ color: 'var(--color-info)', fontWeight: 600 }}>{row.outcomeHits}</span>
+                  </div>
+
+                  <div className="points-cell">{row.points}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // --- RENDER VISTA PRINCIPAL (USUARIO AUTENTICADO) ---
   return (
     <div className="container">
@@ -1544,65 +1624,22 @@ export default function App() {
                   </p>
                 </div>
 
-                <div className="leaderboard-container-scroll">
-                  <div className="leaderboard-list">
-                    <div className="leaderboard-row header">
-                      <div className="rank-cell">Pos</div>
-                      <div className="name-cell" style={{ paddingLeft: '0.5rem' }}>Participante</div>
-                      <div>Pronósticos</div>
-                      <div>Aciertos (Ex/Sm)</div>
-                      <div className="points-cell">Puntos</div>
-                    </div>
-
-                    {leaderboard
-                      .filter(row => (row.id_tipo_usuario || 2) === (user?.id_tipo_usuario || 2))
-                      .map((row, index) => {
-                        const isRank1 = index === 0;
-                        const isRank2 = index === 1;
-                        const isRank3 = index === 2;
-                        const isCurrentUser = row.id === user?.id;
-
-                        return (
-                          <div
-                            key={row.id}
-                            className={`leaderboard-row ${isCurrentUser ? 'highlight' : ''}`}
-                            style={{ borderLeft: isCurrentUser ? '3px solid var(--color-primary)' : '1px solid var(--border-color)' }}
-                          >
-                            <div className={`rank-cell ${isRank1 ? 'top-1' : isRank2 ? 'top-2' : isRank3 ? 'top-3' : ''}`}>
-                              {isRank1 ? '🥇' : isRank2 ? '🥈' : isRank3 ? '🥉' : `${index + 1}`}
-                            </div>
-
-                            <div className="name-cell">
-                              <div className="profile-avatar" style={{
-                                width: '24px',
-                                height: '24px',
-                                fontSize: '0.75rem',
-                                background: isCurrentUser
-                                  ? 'linear-gradient(135deg, var(--color-primary), var(--color-info))'
-                                  : 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.1))'
-                              }}>
-                                {row.name.charAt(0)}
-                              </div>
-                              <div>
-                                <span style={{ fontWeight: isCurrentUser ? '800' : '600' }}>{row.name}</span>
-                                {isCurrentUser && <span style={{ marginLeft: '0.4rem', fontSize: '0.6rem', color: 'var(--color-primary)', fontWeight: '700' }}>(Tú)</span>}
-                              </div>
-                            </div>
-
-                            <div>{row.predictionsCount} / 104</div>
-
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                              <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>{row.exactHits}</span>
-                              {' / '}
-                              <span style={{ color: 'var(--color-info)', fontWeight: 600 }}>{row.outcomeHits}</span>
-                            </div>
-
-                            <div className="points-cell">{row.points}</div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
+                {isAdmin ? (
+                  <>
+                    {renderLeaderboardTable(
+                      leaderboard.filter(row => (row.id_tipo_usuario || 2) === 1), 
+                      '⭐ Ranking de Clientes', 
+                      'var(--color-primary)'
+                    )}
+                    {renderLeaderboardTable(
+                      leaderboard.filter(row => (row.id_tipo_usuario || 2) === 2), 
+                      '💼 Ranking de Empleados', 
+                      'var(--color-accent)'
+                    )}
+                  </>
+                ) : (
+                  renderLeaderboardTable(filteredLeaderboard, null, null)
+                )}
               </div>
             )}
 

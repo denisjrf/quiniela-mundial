@@ -171,4 +171,38 @@ router.post('/broadcast-email', auth, async (req, res) => {
   }
 });
 
+// Obtener las predicciones de un usuario específico (Solo Super Administrador)
+router.get('/users/:id/predictions', auth, async (req, res) => {
+  const isSuperAdmin = req.user && (
+    req.user.email === 'denis@logistica.com' ||
+    req.user.email.toLowerCase().includes('denis')
+  );
+
+  if (!isSuperAdmin) {
+    return res.status(403).json({ error: 'Acceso denegado. Solo el Super Administrador puede ver las quinielas de otros usuarios.' });
+  }
+
+  const userId = parseInt(req.params.id, 10);
+  if (isNaN(userId)) {
+    return res.status(400).json({ error: 'ID de usuario no válido.' });
+  }
+
+  try {
+    const result = await db.query(
+      'SELECT group_predictions, knockout_predictions FROM predictions WHERE user_id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      // El usuario no tiene predicciones guardadas, devolver estructuras vacías
+      return res.status(200).json({ group_predictions: [], knockout_predictions: {} });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al obtener predicciones del usuario:', error.message);
+    return res.status(500).json({ error: 'Error interno al obtener la quiniela del usuario.' });
+  }
+});
+
 module.exports = router;

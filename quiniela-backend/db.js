@@ -68,7 +68,7 @@ const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    
+
     // Ejecutar ALTER defensivo por si la tabla ya existía sin la columna is_admin o campos de verificación
     await client.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false;
@@ -121,6 +121,37 @@ const initDatabase = async () => {
       );
     `);
     console.log('✔️ Tabla "predictions" verificada/creada.');
+
+    // 2.2. Crear Tabla de Historial de Predicciones automáticamente (predictions_history)
+    try {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS predictions_history (
+          id SERIAL PRIMARY KEY,
+          user_id INT REFERENCES users(id) ON DELETE CASCADE,
+          changed_by_user_id INT REFERENCES users(id) ON DELETE SET NULL,
+          action VARCHAR(50) NOT NULL,
+          group_predictions JSONB NOT NULL,
+          knockout_predictions JSONB NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      console.log('✔️ Tabla "predictions_history" verificada/creada.');
+
+      // Copiar la data actual si la tabla está vacía
+      const logCheck = await client.query('SELECT COUNT(*) FROM predictions_history');
+      if (parseInt(logCheck.rows[0].count, 10) === 0) {
+        console.log('⏳ Realizando migración inicial automática a predictions_history...');
+        await client.query(`
+          INSERT INTO predictions_history (user_id, changed_by_user_id, action, group_predictions, knockout_predictions, created_at)
+          SELECT user_id, user_id, 'INITIAL_SNAPSHOT', group_predictions, knockout_predictions, updated_at
+          FROM predictions
+          ON CONFLICT DO NOTHING;
+        `);
+        console.log('✔️ Migración inicial automática completada.');
+      }
+    } catch (migrationError) {
+      console.warn('⚠️ Advertencia: No se pudo completar la inicialización de predictions_history:', migrationError.message);
+    }
 
     // 3. Crear Tabla de Resultados Reales
     await client.query(`
