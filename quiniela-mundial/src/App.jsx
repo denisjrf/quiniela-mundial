@@ -1591,6 +1591,8 @@ export default function App() {
                 rank={rank}
                 teams={initialTeams}
                 onRenameProfile={handleRenameProfile}
+                realGroupMatches={realGroupMatches}
+                realKnockoutStage={realKnockoutStage}
               />
             )}
 

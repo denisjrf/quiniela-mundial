@@ -9,7 +9,9 @@ export default function Dashboard({
   points,
   rank,
   teams,
-  onRenameProfile
+  onRenameProfile,
+  realGroupMatches = [],
+  realKnockoutStage = {}
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(currentUser?.name || '');
@@ -67,6 +69,133 @@ export default function Dashboard({
   if (finalMatch && finalMatch.winner) {
     championTeam = teams[finalMatch.winner];
   }
+
+  // --- JUEGOS DEL DÍA (CARTELERA Y MARCADORES REALES) ---
+  const displayInfo = React.useMemo(() => {
+    const all = [];
+    const roundNames = {
+      roundOf32: '16vos de Final',
+      roundOf16: 'Octavos de Final',
+      quarterfinals: 'Cuartos de Final',
+      semifinals: 'Semifinal',
+      thirdPlace: 'Tercer Puesto',
+      final: 'Gran Final'
+    };
+
+    const groupSrc = (realGroupMatches && realGroupMatches.length > 0) ? realGroupMatches : initialGroupMatches;
+    groupSrc.forEach(m => {
+      all.push({
+        id: m.id,
+        team1: m.team1,
+        team2: m.team2,
+        team1Score: m.team1Score,
+        team2Score: m.team2Score,
+        kickoff: getMatchKickoff(m.id),
+        label: `Grupo ${m.group}`
+      });
+    });
+
+    const koSrc = (realKnockoutStage && Object.keys(realKnockoutStage).length > 0) ? realKnockoutStage : initialKnockoutStage;
+    Object.keys(koSrc).forEach(roundKey => {
+      koSrc[roundKey].forEach(m => {
+        all.push({
+          id: m.id,
+          team1: m.team1,
+          team2: m.team2,
+          team1Score: m.team1Score,
+          team2Score: m.team2Score,
+          kickoff: getMatchKickoff(m.id),
+          label: roundNames[roundKey] || roundKey
+        });
+      });
+    });
+
+    const isSameDay = (d1, d2) => {
+      return d1.getFullYear() === d2.getFullYear() &&
+             d1.getMonth() === d2.getMonth() &&
+             d1.getDate() === d2.getDate();
+    };
+
+    const now = new Date();
+    
+    // 1. Intentar encontrar partidos para hoy
+    const todayMatches = all.filter(m => {
+      const kDate = new Date(m.kickoff);
+      return isSameDay(kDate, now);
+    });
+
+    if (todayMatches.length > 0) {
+      return { matches: todayMatches, isToday: true, dateLabel: 'Partidos de Hoy' };
+    }
+
+    // 2. Si no hay partidos hoy, buscar partidos del primer día futuro que sí tenga partidos
+    const upcomingMatches = all
+      .filter(m => new Date(m.kickoff) > now)
+      .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+
+    if (upcomingMatches.length === 0) {
+      // Si no hay partidos futuros, buscar los partidos del último día jugado
+      const pastMatchesSorted = all
+        .filter(m => new Date(m.kickoff) <= now)
+        .sort((a, b) => new Date(b.kickoff) - new Date(a.kickoff));
+        
+      if (pastMatchesSorted.length > 0) {
+        const lastMatchDate = new Date(pastMatchesSorted[0].kickoff);
+        const lastDayMatches = all.filter(m => isSameDay(new Date(m.kickoff), lastMatchDate));
+        
+        const dateFormatted = lastMatchDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+        return { 
+          matches: lastDayMatches, 
+          isToday: false, 
+          isPast: true,
+          dateLabel: `Últimos Resultados (${dateFormatted})` 
+        };
+      }
+
+      return { matches: [], isToday: false, dateLabel: 'Partidos del Día' };
+    }
+
+    const nextMatchDate = new Date(upcomingMatches[0].kickoff);
+    const nextDayMatches = all.filter(m => isSameDay(new Date(m.kickoff), nextMatchDate));
+    const dateFormatted = nextMatchDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+
+    return { 
+      matches: nextDayMatches, 
+      isToday: false, 
+      dateLabel: `Próximos Partidos (${dateFormatted})` 
+    };
+  }, [realGroupMatches, realKnockoutStage]);
+
+  const formatTime = (kickoff) => {
+    const date = new Date(kickoff);
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    return `${hours}:${minutes} ${ampm}`;
+  };
+
+  const getMatchStatus = (kickoff, hasScore) => {
+    if (hasScore) {
+      return { text: '🟢 Finalizado', color: 'var(--color-primary)' };
+    }
+    const now = new Date();
+    const kickoffTime = new Date(kickoff);
+    const diffMs = now - kickoffTime;
+
+    if (diffMs >= 0) {
+      // Si ya empezó pero el administrador no ha subido el resultado oficial
+      if (diffMs < 2.5 * 60 * 60 * 1000) {
+        return { text: '⚡ En curso', color: 'var(--color-danger)' };
+      } else {
+        return { text: '⏳ Por reportar', color: 'var(--color-accent)' };
+      }
+    }
+
+    return { text: `⏰ ${formatTime(kickoff)}`, color: 'var(--color-info)' };
+  };
 
   // --- CUENTA REGRESIVA AL PRÓXIMO PARTIDO ---
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -309,6 +438,114 @@ export default function Dashboard({
           </div>
         )}
       </div>
+
+      {/* Cartelera de Partidos del Día */}
+      {displayInfo.matches.length > 0 && (
+        <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, var(--color-info), var(--color-primary))' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }} className="gradient-text">
+              ⚽ {displayInfo.dateLabel}
+            </h3>
+            {displayInfo.isToday && (
+              <span className="profile-badge" style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', animation: 'pulse 2s infinite alternate', background: 'rgba(0, 255, 135, 0.15)', border: '1px solid rgba(0, 255, 135, 0.3)', color: 'var(--color-primary)' }}>
+                🔴 EN VIVO / HOY
+              </span>
+            )}
+          </div>
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '1rem'
+          }}>
+            {displayInfo.matches.map(m => {
+              const team1Obj = teams[m.team1] || { id: m.team1, name: m.team1 || 'Por definir', flag: 'un' };
+              const team2Obj = teams[m.team2] || { id: m.team2, name: m.team2 || 'Por definir', flag: 'un' };
+              const hasScore = m.team1Score !== '' && m.team2Score !== '' && m.team1Score !== null && m.team2Score !== null;
+              const status = getMatchStatus(m.kickoff, hasScore);
+              
+              return (
+                <div key={m.id} style={{
+                  background: 'rgba(255, 255, 255, 0.015)',
+                  border: '1px solid rgba(255, 255, 255, 0.03)',
+                  borderRadius: '12px',
+                  padding: '1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                  transition: 'var(--transition-smooth)'
+                }} className="match-card-item">
+                  {/* Meta: Hora y Fase */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    <span style={{ fontWeight: 600 }}>{m.label}</span>
+                    <span style={{ fontWeight: 700, color: status.color }}>
+                      {status.text}
+                    </span>
+                  </div>
+                  
+                  {/* Contenido del partido */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    {/* Equipo 1 */}
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end', minWidth: 0 }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={team1Obj.name}>
+                        {team1Obj.name}
+                      </span>
+                      {m.team1 ? (
+                        <img
+                          src={`https://flagcdn.com/w40/${team1Obj.flag}.png`}
+                          alt={team1Obj.name}
+                          style={{ width: '28px', height: '18px', borderRadius: '2px', objectFit: 'cover', flexShrink: 0 }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: '1.2rem' }}>🏳️</span>
+                      )}
+                    </div>
+                    
+                    {/* Marcador Real o VS */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: '70px',
+                      background: 'rgba(0, 0, 0, 0.25)',
+                      padding: '0.35rem 0.5rem',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255, 255, 255, 0.05)'
+                    }}>
+                      {hasScore ? (
+                        <div style={{ display: 'flex', gap: '0.4rem', fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)' }}>
+                          <span style={{ color: 'var(--color-primary)' }}>{m.team1Score}</span>
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>-</span>
+                          <span style={{ color: 'var(--color-primary)' }}>{m.team2Score}</span>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>VS</span>
+                      )}
+                    </div>
+                    
+                    {/* Equipo 2 */}
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-start', minWidth: 0 }}>
+                      {m.team2 ? (
+                        <img
+                          src={`https://flagcdn.com/w40/${team2Obj.flag}.png`}
+                          alt={team2Obj.name}
+                          style={{ width: '28px', height: '18px', borderRadius: '2px', objectFit: 'cover', flexShrink: 0 }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: '1.2rem' }}>🏳️</span>
+                      )}
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={team2Obj.name}>
+                        {team2Obj.name}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {showChampModal && championTeam && (
         <div className="champ-reveal-modal" onClick={() => setShowChampModal(false)}>
