@@ -155,16 +155,126 @@ export default function Dashboard({
       return { matches: [], isToday: false, dateLabel: 'Partidos del Día' };
     }
 
-    const nextMatchDate = new Date(upcomingMatches[0].kickoff);
-    const nextDayMatches = all.filter(m => isSameDay(new Date(m.kickoff), nextMatchDate));
-    const dateFormatted = nextMatchDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-
     return { 
       matches: nextDayMatches, 
       isToday: false, 
       dateLabel: `Próximos Partidos (${dateFormatted})` 
     };
   }, [realGroupMatches, realKnockoutStage]);
+
+  // --- ÚLTIMOS 5 RESULTADOS CON COMPARATIVA DE PRONÓSTICOS ---
+  const recentResults = React.useMemo(() => {
+    const completed = [];
+    const roundNames = {
+      roundOf32: '16vos de Final',
+      roundOf16: 'Octavos de Final',
+      quarterfinals: 'Cuartos de Final',
+      semifinals: 'Semifinal',
+      thirdPlace: 'Tercer Puesto',
+      final: 'Gran Final'
+    };
+
+    // 1. Fase de Grupos
+    const groupSrc = (realGroupMatches && realGroupMatches.length > 0) ? realGroupMatches : [];
+    groupSrc.forEach(m => {
+      const hasRealScore = m.team1Score !== '' && m.team2Score !== '' && m.team1Score !== null && m.team2Score !== null;
+      if (hasRealScore) {
+        const pred = groupMatches.find(p => p.id === m.id);
+        completed.push({
+          id: m.id,
+          team1: m.team1,
+          team2: m.team2,
+          realScore1: m.team1Score,
+          realScore2: m.team2Score,
+          predScore1: pred ? pred.team1Score : '',
+          predScore2: pred ? pred.team2Score : '',
+          kickoff: getMatchKickoff(m.id),
+          label: `Grupo ${m.group}`,
+          isKnockout: false,
+          realWinner: null,
+          predWinner: null,
+          wentToPenalties: false
+        });
+      }
+    });
+
+    // 2. Eliminatorias
+    const koSrc = (realKnockoutStage && Object.keys(realKnockoutStage).length > 0) ? realKnockoutStage : {};
+    Object.keys(koSrc).forEach(roundKey => {
+      koSrc[roundKey].forEach(m => {
+        const hasRealScore = m.team1Score !== '' && m.team2Score !== '' && m.team1Score !== null && m.team2Score !== null;
+        if (hasRealScore) {
+          const pred = knockoutStage[roundKey]?.find(p => p.id === m.id);
+          completed.push({
+            id: m.id,
+            team1: m.team1,
+            team2: m.team2,
+            realScore1: m.team1Score,
+            realScore2: m.team2Score,
+            predScore1: pred ? pred.team1Score : '',
+            predScore2: pred ? pred.team2Score : '',
+            kickoff: getMatchKickoff(m.id),
+            label: roundNames[roundKey] || roundKey,
+            isKnockout: true,
+            realWinner: m.winner,
+            predWinner: pred ? pred.winner : null,
+            wentToPenalties: m.went_to_penalties || false
+          });
+        }
+      });
+    });
+
+    // Ordenar por fecha de inicio descendente (los más recientes primero)
+    completed.sort((a, b) => new Date(b.kickoff) - new Date(a.kickoff));
+
+    return completed.slice(0, 5);
+  }, [realGroupMatches, realKnockoutStage, groupMatches, knockoutStage]);
+
+  const calculateMatchPoints = React.useCallback((item) => {
+    const { realScore1, realScore2, predScore1, predScore2, isKnockout, realWinner, predWinner, wentToPenalties } = item;
+
+    if (realScore1 === '' || realScore2 === '' || realScore1 === null || realScore2 === null) {
+      return null;
+    }
+    if (predScore1 === '' || predScore2 === '' || predScore1 === null || predScore2 === null) {
+      return { points: 0, label: 'Sin pronóstico' };
+    }
+
+    const p1 = parseInt(predScore1, 10);
+    const p2 = parseInt(predScore2, 10);
+    const r1 = parseInt(realScore1, 10);
+    const r2 = parseInt(realScore2, 10);
+
+    if (isNaN(p1) || isNaN(p2) || isNaN(r1) || isNaN(r2)) {
+      return { points: 0, label: 'Sin pronóstico' };
+    }
+
+    if (!isKnockout) {
+      if (p1 === r1 && p2 === r2) {
+        return { points: 3, label: 'Exacto' };
+      } else {
+        const predSign = Math.sign(p1 - p2);
+        const realSign = Math.sign(r1 - r2);
+        if (predSign === realSign) {
+          return { points: 1, label: 'Acierto' };
+        } else {
+          return { points: 0, label: 'Incorrecto' };
+        }
+      }
+    } else {
+      if (!realWinner || !predWinner) {
+        return { points: 0, label: 'Incorrecto' };
+      }
+      if (wentToPenalties) {
+        if (predWinner === realWinner) {
+          return { points: 1, label: 'Acierto (Penales)' };
+        }
+      } else if (predWinner === realWinner) {
+        return { points: 3, label: 'Acierto' };
+      }
+      return { points: 0, label: 'Incorrecto' };
+    }
+  }, []);
 
   const formatTime = (kickoff) => {
     const date = new Date(kickoff);
@@ -540,6 +650,165 @@ export default function Dashboard({
                       </span>
                     </div>
                   </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Resultados Recientes (Últimos 5 partidos con comparativa de quiniela) */}
+      {recentResults.length > 0 && (
+        <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, var(--color-secondary), var(--color-accent))' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }} className="gradient-text-purple">
+              📊 Últimos Resultados y Tus Puntos
+            </h3>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              Comparativa de tus pronósticos
+            </span>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '1rem'
+          }}>
+            {recentResults.map(m => {
+              const team1Obj = teams[m.team1] || { id: m.team1, name: m.team1 || 'Por definir', flag: 'un' };
+              const team2Obj = teams[m.team2] || { id: m.team2, name: m.team2 || 'Por definir', flag: 'un' };
+              
+              const userStats = calculateMatchPoints(m);
+              
+              // Estilo del badge según los puntos obtenidos
+              let badgeBg = 'rgba(100, 116, 139, 0.1)';
+              let badgeBorder = '1px solid rgba(100, 116, 139, 0.2)';
+              let badgeColor = 'var(--text-secondary)';
+              let badgeText = '0 Pts (Incorrecto)';
+
+              if (userStats) {
+                if (userStats.points === 3) {
+                  badgeBg = 'rgba(0, 255, 135, 0.12)';
+                  badgeBorder = '1px solid rgba(0, 255, 135, 0.3)';
+                  badgeColor = 'var(--color-primary)';
+                  badgeText = `+3 Pts (${userStats.label})`;
+                } else if (userStats.points === 1) {
+                  badgeBg = 'rgba(0, 210, 255, 0.12)';
+                  badgeBorder = '1px solid rgba(0, 210, 255, 0.3)';
+                  badgeColor = 'var(--color-info)';
+                  badgeText = `+1 Pt (${userStats.label})`;
+                } else {
+                  badgeBg = 'rgba(255, 0, 85, 0.12)';
+                  badgeBorder = '1px solid rgba(255, 0, 85, 0.3)';
+                  badgeColor = 'var(--color-danger)';
+                  badgeText = `0 Pts (${userStats.label})`;
+                }
+              }
+
+              const hasUserPrediction = m.predScore1 !== '' && m.predScore2 !== '' && m.predScore1 !== null && m.predScore2 !== null;
+
+              return (
+                <div key={m.id} style={{
+                  background: 'rgba(255, 255, 255, 0.01)',
+                  border: '1px solid rgba(255, 255, 255, 0.03)',
+                  borderRadius: '12px',
+                  padding: '1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                  position: 'relative',
+                  transition: 'var(--transition-smooth)'
+                }} className="match-card-item">
+                  
+                  {/* Fila superior: Jornada / Fase y Puntos */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>{m.label}</span>
+                    <span style={{
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '12px',
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      backgroundColor: badgeBg,
+                      border: badgeBorder,
+                      color: badgeColor
+                    }}>
+                      {badgeText}
+                    </span>
+                  </div>
+
+                  {/* Marcadores reales */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    {/* Equipo 1 */}
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end', minWidth: 0 }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={team1Obj.name}>
+                        {team1Obj.name}
+                      </span>
+                      <img
+                        src={`https://flagcdn.com/w40/${team1Obj.flag}.png`}
+                        alt={team1Obj.name}
+                        style={{ width: '28px', height: '18px', borderRadius: '2px', objectFit: 'cover', flexShrink: 0 }}
+                      />
+                    </div>
+
+                    {/* Marcador Real */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: '70px',
+                      background: 'rgba(0, 0, 0, 0.35)',
+                      padding: '0.35rem 0.5rem',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255, 255, 255, 0.08)'
+                    }}>
+                      <div style={{ display: 'flex', gap: '0.4rem', fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)' }}>
+                        <span style={{ color: 'var(--color-primary)' }}>{m.realScore1}</span>
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>-</span>
+                        <span style={{ color: 'var(--color-primary)' }}>{m.realScore2}</span>
+                      </div>
+                    </div>
+
+                    {/* Equipo 2 */}
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-start', minWidth: 0 }}>
+                      <img
+                        src={`https://flagcdn.com/w40/${team2Obj.flag}.png`}
+                        alt={team2Obj.name}
+                        style={{ width: '28px', height: '18px', borderRadius: '2px', objectFit: 'cover', flexShrink: 0 }}
+                      />
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={team2Obj.name}>
+                        {team2Obj.name}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Comparativa con tu pronóstico */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    background: 'rgba(0, 0, 0, 0.15)',
+                    padding: '0.3rem 0.5rem',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    border: '1px solid rgba(255, 255, 255, 0.02)'
+                  }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Tu Quiniela:</span>
+                    {hasUserPrediction ? (
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {m.predScore1} - {m.predScore2}
+                        {m.isKnockout && m.predWinner && (
+                          <span style={{ color: 'var(--color-info)', marginLeft: '0.3rem', fontSize: '0.7rem' }}>
+                            ({teams[m.predWinner]?.name || m.predWinner})
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Sin pronóstico</span>
+                    )}
+                  </div>
+
                 </div>
               );
             })}
