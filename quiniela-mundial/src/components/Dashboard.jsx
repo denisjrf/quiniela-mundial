@@ -11,7 +11,8 @@ export default function Dashboard({
   teams,
   onRenameProfile,
   realGroupMatches = [],
-  realKnockoutStage = {}
+  realKnockoutStage = {},
+  predictionStats = {}
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(currentUser?.name || '');
@@ -650,6 +651,67 @@ export default function Dashboard({
                       </span>
                     </div>
                   </div>
+
+                  {/* Marcadores populares */}
+                  {predictionStats && predictionStats[m.id] && predictionStats[m.id].length > 0 && (
+                    <div style={{
+                      marginTop: '0.25rem',
+                      paddingTop: '0.6rem',
+                      borderTop: '1px solid rgba(255, 255, 255, 0.03)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.35rem',
+                    }}>
+                      <div style={{
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        color: 'var(--text-secondary)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}>
+                        <span>🔥 Pronósticos Populares:</span>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        gap: '0.4rem',
+                        flexWrap: 'wrap'
+                      }}>
+                        {predictionStats[m.id].map((stat, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              flex: 1,
+                              minWidth: '60px',
+                              background: 'rgba(255, 255, 255, 0.02)',
+                              border: '1px solid rgba(255, 255, 255, 0.04)',
+                              borderRadius: '6px',
+                              padding: '0.2rem 0.4rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.7rem',
+                              transition: 'var(--transition-smooth)',
+                            }}
+                            className="popular-score-badge"
+                            title={`${stat.count} votos`}
+                          >
+                            <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{stat.score.replace('-', ' - ')}</span>
+                            <span style={{
+                              fontWeight: 700,
+                              fontSize: '0.6rem',
+                              color: idx === 0 ? 'var(--color-primary)' : idx === 1 ? 'var(--color-info)' : 'var(--text-secondary)',
+                              marginTop: '0.05rem'
+                            }}>{stat.pct}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               );
             })}

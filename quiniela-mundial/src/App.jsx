@@ -214,6 +214,9 @@ export default function App() {
   // --- ESTADO DE RESULTADOS REALES (ADMIN) ---
   const [realGroupMatches, setRealGroupMatches] = useState(initialGroupMatches.map(m => ({ ...m, team1Score: '', team2Score: '' })));
   const [realKnockoutStage, setRealKnockoutStage] = useState(initialKnockoutStage);
+  
+  // --- ESTADO DE ESTADÍSTICAS DE PREDICCIONES (COMUNIDAD) ---
+  const [predictionStats, setPredictionStats] = useState({});
 
   // --- ESTADO DEL LEADERBOARD CENTRAL ---
   const [leaderboard, setLeaderboard] = useState([]);
@@ -399,6 +402,19 @@ export default function App() {
         }
       } catch (err) {
         console.error('Error al cargar configuración del sistema:', err);
+      }
+
+      // Cargar estadísticas de predicciones de la comunidad
+      try {
+        const statsRes = await fetch(`${API_BASE_URL}/predictions/stats`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setPredictionStats(statsData);
+        }
+      } catch (err) {
+        console.error('Error al cargar estadísticas de predicciones:', err);
       }
 
       setUnsavedChanges(false);
@@ -628,6 +644,19 @@ export default function App() {
       });
       const lbData = await lbRes.json();
       setLeaderboard(lbData);
+
+      // Recargar estadísticas de predicciones de la comunidad
+      try {
+        const statsRes = await fetch(`${API_BASE_URL}/predictions/stats`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setPredictionStats(statsData);
+        }
+      } catch (err) {
+        console.error('Error al recargar estadísticas de predicciones:', err);
+      }
 
       setUnsavedChanges(false);
       showToast('🏆 ¡Quiniela guardada con éxito en la base de datos de la empresa!', 'success');
@@ -1593,6 +1622,7 @@ export default function App() {
                 onRenameProfile={handleRenameProfile}
                 realGroupMatches={realGroupMatches}
                 realKnockoutStage={realKnockoutStage}
+                predictionStats={predictionStats}
               />
             )}
 
