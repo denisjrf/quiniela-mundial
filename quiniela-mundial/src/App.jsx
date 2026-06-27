@@ -950,10 +950,8 @@ export default function App() {
   
   const rank = filteredLeaderboard.findIndex(p => p.id === user?.id) + 1 || '-';
 
-  // Evaluar si todos los grupos de la quiniela activa tienen predicciones completas
-  const groupWinnersReady = groupMatches.every(
-    m => m.team1Score !== '' && m.team2Score !== ''
-  );
+  // Eliminatorios siempre activos (sin restricción de fase de grupos)
+  const groupWinnersReady = true;
 
   // --- RENDER VISTA PÚBLICA DE INICIO DE SESIÓN / REGISTRO ---
   if (!token) {

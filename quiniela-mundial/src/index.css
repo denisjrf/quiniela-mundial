@@ -570,7 +570,7 @@ header {
   display: flex;
   flex-direction: column;
   justify-content: space-around;
-  height: 1150px;
+  height: 2000px;
 }
 
 .bracket-round-title {
@@ -682,6 +682,82 @@ header {
 .bracket-score-input:focus {
   border-color: var(--color-secondary);
 }
+
+/* ─── Bracket Mobile Responsive ───────────────────────────── */
+@media (max-width: 768px) {
+  /* Quitar scroll horizontal — las rondas se apilan verticalmente */
+  .bracket-wrapper {
+    overflow-x: visible;
+    padding: 1rem 0;
+  }
+
+  .bracket-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-width: unset;
+    width: 100%;
+  }
+
+  /* Cada ronda ocupa su propio bloque, altura automática */
+  .bracket-round {
+    height: auto !important;
+    justify-content: flex-start;
+    width: 100%;
+    margin-bottom: 0;
+  }
+
+  /* Título de ronda — estilo de sección colapsable visualmente */
+  .bracket-round-title {
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    margin: 1.25rem 0 0.75rem 0;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255,255,255,0.04);
+    border-radius: 8px;
+    border-bottom: none;
+    border-left: 3px solid var(--color-primary);
+    text-align: left;
+  }
+
+  /* Lista de partidos: columna normal, sin justify-content space-around */
+  .bracket-matches-list {
+    height: auto;
+    justify-content: flex-start;
+    gap: 0.6rem;
+  }
+
+  /* Tarjeta de partido — ancho completo */
+  .bracket-match-card {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.6rem 0.75rem;
+  }
+
+  /* Fila de equipo — un poco más alta para facilitar el tap */
+  .bracket-team-row {
+    padding: 0.45rem 0.4rem;
+    min-height: 36px;
+  }
+
+  /* Texto del equipo más legible */
+  .bracket-team-info {
+    font-size: 0.85rem;
+  }
+
+  /* Input de marcador más fácil de tocar */
+  .bracket-score-input {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
+
+  /* Tercer puesto y Final en móvil: altura auto también */
+  .bracket-round > div[style] {
+    height: auto !important;
+  }
+}
+/* ─────────────────────────────────────────────────────────── */
 
 /* Leaderboard Page */
 .leaderboard-container {
