@@ -106,7 +106,11 @@ export default function Dashboard({
           team1Score: m.team1Score,
           team2Score: m.team2Score,
           kickoff: getMatchKickoff(m.id),
-          label: roundNames[roundKey] || roundKey
+          label: roundNames[roundKey] || roundKey,
+          went_to_penalties: m.went_to_penalties,
+          team1PenScore: m.team1PenScore,
+          team2PenScore: m.team2PenScore,
+          winner: m.winner
         });
       });
     });
@@ -155,6 +159,10 @@ export default function Dashboard({
 
       return { matches: [], isToday: false, dateLabel: 'Partidos del Día' };
     }
+
+    const nextMatchDate = new Date(upcomingMatches[0].kickoff);
+    const nextDayMatches = all.filter(m => isSameDay(new Date(m.kickoff), nextMatchDate));
+    const dateFormatted = nextMatchDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
     return { 
       matches: nextDayMatches, 
@@ -219,7 +227,9 @@ export default function Dashboard({
             isKnockout: true,
             realWinner: m.winner,
             predWinner: pred ? pred.winner : null,
-            wentToPenalties: m.went_to_penalties || false
+            wentToPenalties: m.went_to_penalties || false,
+            realTeam1PenScore: m.team1PenScore,
+            realTeam2PenScore: m.team2PenScore
           });
         }
       });
@@ -618,17 +628,31 @@ export default function Dashboard({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      minWidth: '70px',
-                      background: 'rgba(0, 0, 0, 0.25)',
-                      padding: '0.35rem 0.5rem',
+                      minWidth: '95px',
+                      background: 'rgba(0, 0, 0, 0.35)',
+                      padding: '0.5rem 0.75rem',
                       borderRadius: '8px',
-                      border: '1px solid rgba(255, 255, 255, 0.05)'
+                      border: '1px solid rgba(255, 255, 255, 0.08)'
                     }}>
                       {hasScore ? (
-                        <div style={{ display: 'flex', gap: '0.4rem', fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)' }}>
-                          <span style={{ color: 'var(--color-primary)' }}>{m.team1Score}</span>
-                          <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>-</span>
-                          <span style={{ color: 'var(--color-primary)' }}>{m.team2Score}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.15rem' }}>
+                          <div style={{ display: 'flex', gap: '0.4rem', fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
+                            <span style={{ color: 'var(--color-primary)' }}>{m.team1Score}</span>
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>-</span>
+                            <span style={{ color: 'var(--color-primary)' }}>{m.team2Score}</span>
+                          </div>
+                          {m.went_to_penalties && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', marginTop: '0.15rem' }}>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-accent)', fontWeight: 700 }}>
+                                ({m.team1PenScore || 0} - {m.team2PenScore || 0} Pen.)
+                              </span>
+                              {m.winner && (
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 700 }}>
+                                  Pasa: {teams[m.winner]?.name || m.winner}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>VS</span>
@@ -818,16 +842,30 @@ export default function Dashboard({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      minWidth: '70px',
+                      minWidth: '95px',
                       background: 'rgba(0, 0, 0, 0.35)',
-                      padding: '0.35rem 0.5rem',
+                      padding: '0.5rem 0.75rem',
                       borderRadius: '8px',
                       border: '1px solid rgba(255, 255, 255, 0.08)'
                     }}>
-                      <div style={{ display: 'flex', gap: '0.4rem', fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)' }}>
-                        <span style={{ color: 'var(--color-primary)' }}>{m.realScore1}</span>
-                        <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>-</span>
-                        <span style={{ color: 'var(--color-primary)' }}>{m.realScore2}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.15rem' }}>
+                        <div style={{ display: 'flex', gap: '0.4rem', fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
+                          <span style={{ color: 'var(--color-primary)' }}>{m.realScore1}</span>
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>-</span>
+                          <span style={{ color: 'var(--color-primary)' }}>{m.realScore2}</span>
+                        </div>
+                        {m.wentToPenalties && (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', marginTop: '0.15rem' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-accent)', fontWeight: 700 }}>
+                              ({m.realTeam1PenScore || 0} - {m.realTeam2PenScore || 0} Pen.)
+                            </span>
+                            {m.realWinner && (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 700 }}>
+                                Pasa: {teams[m.realWinner]?.name || m.realWinner}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 

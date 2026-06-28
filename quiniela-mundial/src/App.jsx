@@ -780,9 +780,24 @@ export default function App() {
           const g1 = parseInt(s1, 10);
           const g2 = parseInt(s2, 10);
           if (!isNaN(g1) && !isNaN(g2)) {
-            if (g1 > g2) nextMatch.winner = nextMatch.team1;
-            else if (g1 < g2) nextMatch.winner = nextMatch.team2;
-            else nextMatch.winner = Math.random() > 0.5 ? nextMatch.team1 : nextMatch.team2;
+            if (g1 > g2) {
+              nextMatch.winner = nextMatch.team1;
+            } else if (g1 < g2) {
+              nextMatch.winner = nextMatch.team2;
+            } else {
+              // Es un empate, verificar penales si existen
+              const p1 = parseInt(nextMatch.team1PenScore, 10);
+              const p2 = parseInt(nextMatch.team2PenScore, 10);
+              if (!isNaN(p1) && !isNaN(p2)) {
+                if (p1 > p2) nextMatch.winner = nextMatch.team1;
+                else if (p1 < p2) nextMatch.winner = nextMatch.team2;
+              } else {
+                // Si no hay penales, usar aleatorio si no tiene ganador previo
+                if (!nextMatch.winner || (nextMatch.winner !== nextMatch.team1 && nextMatch.winner !== nextMatch.team2)) {
+                  nextMatch.winner = Math.random() > 0.5 ? nextMatch.team1 : nextMatch.team2;
+                }
+              }
+            }
           }
         } else {
           nextMatch.winner = null;
@@ -803,6 +818,18 @@ export default function App() {
       return m;
     });
     const updatedKnockout = { ...realKnockoutStage, [round]: updatedRound };
+    setRealKnockoutStage(updatedKnockout);
+    saveRealResultsToServer(realGroupMatches, updatedKnockout);
+  };
+
+  const handleRealKnockoutWinnerChange = (round, matchId, winnerTeamId) => {
+    const updatedRound = realKnockoutStage[round].map(m => {
+      if (m.id === matchId) {
+        return { ...m, winner: winnerTeamId };
+      }
+      return m;
+    });
+    const updatedKnockout = propagateKnockouts({ ...realKnockoutStage, [round]: updatedRound });
     setRealKnockoutStage(updatedKnockout);
     saveRealResultsToServer(realGroupMatches, updatedKnockout);
   };
@@ -1699,6 +1726,7 @@ export default function App() {
                 }}
                 onRealKnockoutTeamChange={handleRealKnockoutTeamChange}
                 onRealKnockoutPenaltiesChange={handleRealKnockoutPenaltiesChange}
+                onRealKnockoutWinnerChange={handleRealKnockoutWinnerChange}
               />
             )}
           </>

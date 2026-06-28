@@ -58,49 +58,68 @@ function getMatchKickoff(matchId) {
   // Eliminatorias
   const idStr = String(matchId);
   if (idStr.startsWith('R32-')) {
-    const idx = parseInt(idStr.replace('R32-', ''), 10) - 1; // 0 a 15
-    const dayIndex = Math.floor(idx / 4); // 4 partidos al día
-    const matchIndexInDay = idx % 4;
-    const hoursUTC = 14 + matchIndexInDay * 3; // 14:00, 17:00, 20:00, 23:00
-    
-    const date = new Date('2026-06-28T00:00:00Z');
-    date.setUTCDate(date.getUTCDate() + dayIndex);
-    date.setUTCHours(hoursUTC, 0, 0, 0);
-    return date.toISOString();
+    const r32Kickoffs = {
+      'R32-1': '2026-06-28T19:00:00.000Z', // June 28, 3:00 PM local (UTC-4)
+      'R32-2': '2026-06-30T01:00:00.000Z', // June 29, 9:00 PM local
+      'R32-3': '2026-06-29T20:30:00.000Z', // June 29, 4:30 PM local
+      'R32-4': '2026-06-30T21:00:00.000Z', // June 30, 5:00 PM local
+      'R32-5': '2026-07-01T20:00:00.000Z', // July 1, 4:00 PM local
+      'R32-6': '2026-07-02T00:00:00.000Z', // July 1, 8:00 PM local
+      'R32-7': '2026-07-02T19:00:00.000Z', // July 2, 3:00 PM local
+      'R32-8': '2026-07-02T23:00:00.000Z', // July 2, 7:00 PM local
+      'R32-9': '2026-06-29T17:00:00.000Z', // June 29, 1:00 PM local
+      'R32-10': '2026-06-30T17:00:00.000Z', // June 30, 1:00 PM local
+      'R32-11': '2026-07-01T01:00:00.000Z', // June 30, 9:00 PM local
+      'R32-12': '2026-07-01T16:00:00.000Z', // July 1, 12:00 PM local
+      'R32-13': '2026-07-03T03:00:00.000Z', // July 2, 11:00 PM local
+      'R32-14': '2026-07-04T01:30:00.000Z', // July 3, 9:30 PM local
+      'R32-15': '2026-07-03T18:00:00.000Z', // July 3, 2:00 PM local
+      'R32-16': '2026-07-03T22:00:00.000Z'  // July 3, 6:00 PM local
+    };
+    if (r32Kickoffs[idStr]) {
+      return r32Kickoffs[idStr];
+    }
   }
   if (idStr.startsWith('R16-')) {
-    const idx = parseInt(idStr.replace('R16-', ''), 10) - 1; // 0 a 7
-    const dayIndex = Math.floor(idx / 2); // 2 partidos al día
-    const matchIndexInDay = idx % 2;
-    const hoursUTC = matchIndexInDay === 0 ? 16 : 20;
-    
-    const date = new Date('2026-07-04T00:00:00Z');
-    date.setUTCDate(date.getUTCDate() + dayIndex);
-    date.setUTCHours(hoursUTC, 0, 0, 0);
-    return date.toISOString();
+    const r16Kickoffs = {
+      'R16-1': '2026-07-04T17:00:00.000Z', // Sáb 4/7, 1:00 PM local (UTC-4)
+      'R16-2': '2026-07-04T21:00:00.000Z', // Sáb 4/7, 5:00 PM local
+      'R16-3': '2026-07-05T20:00:00.000Z', // Dom 5/7, 4:00 PM local
+      'R16-4': '2026-07-06T00:00:00.000Z', // Dom 5/7, 8:00 PM local
+      'R16-5': '2026-07-07T00:00:00.000Z', // Lun 6/7, 8:00 PM local
+      'R16-6': '2026-07-06T19:00:00.000Z', // Lun 6/7, 3:00 PM local
+      'R16-7': '2026-07-07T20:00:00.000Z', // Mar 7/7, 4:00 PM local
+      'R16-8': '2026-07-07T16:00:00.000Z'  // Mar 7/7, 12:00 PM local
+    };
+    if (r16Kickoffs[idStr]) {
+      return r16Kickoffs[idStr];
+    }
   }
   if (idStr.startsWith('QF-')) {
-    const idx = parseInt(idStr.replace('QF-', ''), 10) - 1; // 0 a 3
-    const dayIndex = Math.floor(idx / 2); // 2 partidos al día
-    const matchIndexInDay = idx % 2;
-    const hoursUTC = matchIndexInDay === 0 ? 16 : 20;
-    
-    const date = new Date('2026-07-10T00:00:00Z');
-    date.setUTCDate(date.getUTCDate() + dayIndex);
-    date.setUTCHours(hoursUTC, 0, 0, 0);
-    return date.toISOString();
+    const qfKickoffs = {
+      'QF-1': '2026-07-09T20:00:00.000Z', // Jue 9/7, 4:00 PM local (UTC-4)
+      'QF-2': '2026-07-10T19:00:00.000Z', // Vie 10/7, 3:00 PM local
+      'QF-3': '2026-07-11T21:00:00.000Z', // Sáb 11/7, 5:00 PM local
+      'QF-4': '2026-07-12T01:00:00.000Z'  // Sáb 11/7, 9:00 PM local
+    };
+    if (qfKickoffs[idStr]) {
+      return qfKickoffs[idStr];
+    }
   }
   if (idStr.startsWith('SF-')) {
-    const idx = parseInt(idStr.replace('SF-', ''), 10) - 1; // 0 a 1
-    const date = new Date('2026-07-14T20:00:00Z'); // 20:00 UTC
-    date.setUTCDate(date.getUTCDate() + idx);
-    return date.toISOString();
+    const sfKickoffs = {
+      'SF-1': '2026-07-14T19:00:00.000Z', // 14/7, 3:00 PM local (UTC-4)
+      'SF-2': '2026-07-15T19:00:00.000Z'  // 15/7, 3:00 PM local
+    };
+    if (sfKickoffs[idStr]) {
+      return sfKickoffs[idStr];
+    }
   }
   if (idStr === 'TP-1') {
-    return '2026-07-18T20:00:00Z';
+    return '2026-07-18T19:00:00.000Z'; // Sáb 18/7, 3:00 PM local (Hora por defecto)
   }
   if (idStr === 'F-1') {
-    return '2026-07-19T20:00:00Z';
+    return '2026-07-19T19:00:00.000Z'; // Dom 19/7, 3:00 PM local
   }
 
   // Valor por defecto (futuro lejano por seguridad)

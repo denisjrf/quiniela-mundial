@@ -18,7 +18,8 @@ export default function AdminPanel({
   config = {},
   onReloadConfig,
   onRealKnockoutTeamChange,
-  onRealKnockoutPenaltiesChange
+  onRealKnockoutPenaltiesChange,
+  onRealKnockoutWinnerChange
 }) {
   const [activeTab, setActiveTab] = useState('A'); // Pestañas 'A'..'L', 'knockout', 'users', 'phases' o 'bulk_email'
   const [usersList, setUsersList] = useState([]);
@@ -217,6 +218,12 @@ export default function AdminPanel({
   };
 
   const handleKnockoutScoreInput = (round, matchId, teamKey, val) => {
+    if (val === '' || /^\d+$/.test(val)) {
+      onRealKnockoutScoreChange(round, matchId, teamKey, val);
+    }
+  };
+
+  const handleKnockoutPenScoreInput = (round, matchId, teamKey, val) => {
     if (val === '' || /^\d+$/.test(val)) {
       onRealKnockoutScoreChange(round, matchId, teamKey, val);
     }
@@ -516,6 +523,83 @@ export default function AdminPanel({
                           🥅 Fue a Penales (+1 pto si acertaron ganador)
                         </label>
                       )}
+                      {isSuperAdmin && match.team1 && match.team2 && match.went_to_penalties && (
+                        <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>Goles Penales:</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            style={{
+                              width: '35px',
+                              textAlign: 'center',
+                              background: 'rgba(15, 23, 42, 0.7)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '4px',
+                              color: 'var(--text-primary)',
+                              fontSize: '0.75rem',
+                              padding: '0.15rem'
+                            }}
+                            value={match.team1PenScore || ''}
+                            onChange={(e) => handleKnockoutPenScoreInput('roundOf32', match.id, 'team1PenScore', e.target.value)}
+                            maxLength={2}
+                          />
+                          <span style={{ color: 'var(--text-muted)' }}>vs</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            style={{
+                              width: '35px',
+                              textAlign: 'center',
+                              background: 'rgba(15, 23, 42, 0.7)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '4px',
+                              color: 'var(--text-primary)',
+                              fontSize: '0.75rem',
+                              padding: '0.15rem'
+                            }}
+                            value={match.team2PenScore || ''}
+                            onChange={(e) => handleKnockoutPenScoreInput('roundOf32', match.id, 'team2PenScore', e.target.value)}
+                            maxLength={2}
+                          />
+                        </div>
+                      )}
+                      {isSuperAdmin && match.team1 && match.team2 && match.team1Score !== '' && match.team2Score !== '' && parseInt(match.team1Score) === parseInt(match.team2Score) && (
+                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.5rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>🏆 Ganador de Penales:</span>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              onClick={() => onRealKnockoutWinnerChange('roundOf32', match.id, match.team1)}
+                              style={{
+                                flex: 1,
+                                padding: '0.25rem',
+                                fontSize: '0.75rem',
+                                background: match.winner === match.team1 ? 'rgba(0, 255, 135, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: match.winner === match.team1 ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                border: match.winner === match.team1 ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {teams[match.team1]?.name || match.team1}
+                            </button>
+                            <button
+                              onClick={() => onRealKnockoutWinnerChange('roundOf32', match.id, match.team2)}
+                              style={{
+                                flex: 1,
+                                padding: '0.25rem',
+                                fontSize: '0.75rem',
+                                background: match.winner === match.team2 ? 'rgba(0, 255, 135, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: match.winner === match.team2 ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                border: match.winner === match.team2 ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {teams[match.team2]?.name || match.team2}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -560,6 +644,83 @@ export default function AdminPanel({
                           <input type="checkbox" checked={!!match.went_to_penalties} onChange={(e) => onRealKnockoutPenaltiesChange('roundOf16', match.id, e.target.checked)} style={{ accentColor: 'var(--color-accent)', cursor: 'pointer' }} />
                           🥅 Fue a Penales (+1 pto si acertaron ganador)
                         </label>
+                      )}
+                      {isSuperAdmin && match.team1 && match.team2 && match.went_to_penalties && (
+                        <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>Goles Penales:</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            style={{
+                              width: '35px',
+                              textAlign: 'center',
+                              background: 'rgba(15, 23, 42, 0.7)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '4px',
+                              color: 'var(--text-primary)',
+                              fontSize: '0.75rem',
+                              padding: '0.15rem'
+                            }}
+                            value={match.team1PenScore || ''}
+                            onChange={(e) => handleKnockoutPenScoreInput('roundOf16', match.id, 'team1PenScore', e.target.value)}
+                            maxLength={2}
+                          />
+                          <span style={{ color: 'var(--text-muted)' }}>vs</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            style={{
+                              width: '35px',
+                              textAlign: 'center',
+                              background: 'rgba(15, 23, 42, 0.7)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '4px',
+                              color: 'var(--text-primary)',
+                              fontSize: '0.75rem',
+                              padding: '0.15rem'
+                            }}
+                            value={match.team2PenScore || ''}
+                            onChange={(e) => handleKnockoutPenScoreInput('roundOf16', match.id, 'team2PenScore', e.target.value)}
+                            maxLength={2}
+                          />
+                        </div>
+                      )}
+                      {isSuperAdmin && match.team1 && match.team2 && match.team1Score !== '' && match.team2Score !== '' && parseInt(match.team1Score) === parseInt(match.team2Score) && (
+                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.5rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>🏆 Ganador de Penales:</span>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              onClick={() => onRealKnockoutWinnerChange('roundOf16', match.id, match.team1)}
+                              style={{
+                                flex: 1,
+                                padding: '0.25rem',
+                                fontSize: '0.75rem',
+                                background: match.winner === match.team1 ? 'rgba(0, 255, 135, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: match.winner === match.team1 ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                border: match.winner === match.team1 ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {teams[match.team1]?.name || match.team1}
+                            </button>
+                            <button
+                              onClick={() => onRealKnockoutWinnerChange('roundOf16', match.id, match.team2)}
+                              style={{
+                                flex: 1,
+                                padding: '0.25rem',
+                                fontSize: '0.75rem',
+                                background: match.winner === match.team2 ? 'rgba(0, 255, 135, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: match.winner === match.team2 ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                border: match.winner === match.team2 ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {teams[match.team2]?.name || match.team2}
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -606,6 +767,83 @@ export default function AdminPanel({
                           🥅 Fue a Penales (+1 pto si acertaron ganador)
                         </label>
                       )}
+                      {isSuperAdmin && match.team1 && match.team2 && match.went_to_penalties && (
+                        <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>Goles Penales:</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            style={{
+                              width: '35px',
+                              textAlign: 'center',
+                              background: 'rgba(15, 23, 42, 0.7)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '4px',
+                              color: 'var(--text-primary)',
+                              fontSize: '0.75rem',
+                              padding: '0.15rem'
+                            }}
+                            value={match.team1PenScore || ''}
+                            onChange={(e) => handleKnockoutPenScoreInput('quarterfinals', match.id, 'team1PenScore', e.target.value)}
+                            maxLength={2}
+                          />
+                          <span style={{ color: 'var(--text-muted)' }}>vs</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            style={{
+                              width: '35px',
+                              textAlign: 'center',
+                              background: 'rgba(15, 23, 42, 0.7)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '4px',
+                              color: 'var(--text-primary)',
+                              fontSize: '0.75rem',
+                              padding: '0.15rem'
+                            }}
+                            value={match.team2PenScore || ''}
+                            onChange={(e) => handleKnockoutPenScoreInput('quarterfinals', match.id, 'team2PenScore', e.target.value)}
+                            maxLength={2}
+                          />
+                        </div>
+                      )}
+                      {isSuperAdmin && match.team1 && match.team2 && match.team1Score !== '' && match.team2Score !== '' && parseInt(match.team1Score) === parseInt(match.team2Score) && (
+                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.5rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>🏆 Ganador de Penales:</span>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              onClick={() => onRealKnockoutWinnerChange('quarterfinals', match.id, match.team1)}
+                              style={{
+                                flex: 1,
+                                padding: '0.25rem',
+                                fontSize: '0.75rem',
+                                background: match.winner === match.team1 ? 'rgba(0, 255, 135, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: match.winner === match.team1 ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                border: match.winner === match.team1 ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {teams[match.team1]?.name || match.team1}
+                            </button>
+                            <button
+                              onClick={() => onRealKnockoutWinnerChange('quarterfinals', match.id, match.team2)}
+                              style={{
+                                flex: 1,
+                                padding: '0.25rem',
+                                fontSize: '0.75rem',
+                                background: match.winner === match.team2 ? 'rgba(0, 255, 135, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: match.winner === match.team2 ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                border: match.winner === match.team2 ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {teams[match.team2]?.name || match.team2}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -650,6 +888,83 @@ export default function AdminPanel({
                           <input type="checkbox" checked={!!match.went_to_penalties} onChange={(e) => onRealKnockoutPenaltiesChange('semifinals', match.id, e.target.checked)} style={{ accentColor: 'var(--color-accent)', cursor: 'pointer' }} />
                           🥅 Fue a Penales (+1 pto si acertaron ganador)
                         </label>
+                      )}
+                      {isSuperAdmin && match.team1 && match.team2 && match.went_to_penalties && (
+                        <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>Goles Penales:</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            style={{
+                              width: '35px',
+                              textAlign: 'center',
+                              background: 'rgba(15, 23, 42, 0.7)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '4px',
+                              color: 'var(--text-primary)',
+                              fontSize: '0.75rem',
+                              padding: '0.15rem'
+                            }}
+                            value={match.team1PenScore || ''}
+                            onChange={(e) => handleKnockoutPenScoreInput('semifinals', match.id, 'team1PenScore', e.target.value)}
+                            maxLength={2}
+                          />
+                          <span style={{ color: 'var(--text-muted)' }}>vs</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            style={{
+                              width: '35px',
+                              textAlign: 'center',
+                              background: 'rgba(15, 23, 42, 0.7)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '4px',
+                              color: 'var(--text-primary)',
+                              fontSize: '0.75rem',
+                              padding: '0.15rem'
+                            }}
+                            value={match.team2PenScore || ''}
+                            onChange={(e) => handleKnockoutPenScoreInput('semifinals', match.id, 'team2PenScore', e.target.value)}
+                            maxLength={2}
+                          />
+                        </div>
+                      )}
+                      {isSuperAdmin && match.team1 && match.team2 && match.team1Score !== '' && match.team2Score !== '' && parseInt(match.team1Score) === parseInt(match.team2Score) && (
+                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.5rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>🏆 Ganador de Penales:</span>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              onClick={() => onRealKnockoutWinnerChange('semifinals', match.id, match.team1)}
+                              style={{
+                                flex: 1,
+                                padding: '0.25rem',
+                                fontSize: '0.75rem',
+                                background: match.winner === match.team1 ? 'rgba(0, 255, 135, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: match.winner === match.team1 ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                border: match.winner === match.team1 ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {teams[match.team1]?.name || match.team1}
+                            </button>
+                            <button
+                              onClick={() => onRealKnockoutWinnerChange('semifinals', match.id, match.team2)}
+                              style={{
+                                flex: 1,
+                                padding: '0.25rem',
+                                fontSize: '0.75rem',
+                                background: match.winner === match.team2 ? 'rgba(0, 255, 135, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: match.winner === match.team2 ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                border: match.winner === match.team2 ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {teams[match.team2]?.name || match.team2}
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -696,6 +1011,83 @@ export default function AdminPanel({
                           🥅 Fue a Penales (+1 pto si acertaron ganador)
                         </label>
                       )}
+                      {isSuperAdmin && match.team1 && match.team2 && match.went_to_penalties && (
+                        <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>Goles Penales:</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            style={{
+                              width: '35px',
+                              textAlign: 'center',
+                              background: 'rgba(15, 23, 42, 0.7)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '4px',
+                              color: 'var(--text-primary)',
+                              fontSize: '0.75rem',
+                              padding: '0.15rem'
+                            }}
+                            value={match.team1PenScore || ''}
+                            onChange={(e) => handleKnockoutPenScoreInput('thirdPlace', match.id, 'team1PenScore', e.target.value)}
+                            maxLength={2}
+                          />
+                          <span style={{ color: 'var(--text-muted)' }}>vs</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            style={{
+                              width: '35px',
+                              textAlign: 'center',
+                              background: 'rgba(15, 23, 42, 0.7)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '4px',
+                              color: 'var(--text-primary)',
+                              fontSize: '0.75rem',
+                              padding: '0.15rem'
+                            }}
+                            value={match.team2PenScore || ''}
+                            onChange={(e) => handleKnockoutPenScoreInput('thirdPlace', match.id, 'team2PenScore', e.target.value)}
+                            maxLength={2}
+                          />
+                        </div>
+                      )}
+                      {isSuperAdmin && match.team1 && match.team2 && match.team1Score !== '' && match.team2Score !== '' && parseInt(match.team1Score) === parseInt(match.team2Score) && (
+                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.5rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>🏆 Ganador de Penales:</span>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              onClick={() => onRealKnockoutWinnerChange('thirdPlace', match.id, match.team1)}
+                              style={{
+                                flex: 1,
+                                padding: '0.25rem',
+                                fontSize: '0.75rem',
+                                background: match.winner === match.team1 ? 'rgba(0, 255, 135, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: match.winner === match.team1 ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                border: match.winner === match.team1 ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {teams[match.team1]?.name || match.team1}
+                            </button>
+                            <button
+                              onClick={() => onRealKnockoutWinnerChange('thirdPlace', match.id, match.team2)}
+                              style={{
+                                flex: 1,
+                                padding: '0.25rem',
+                                fontSize: '0.75rem',
+                                background: match.winner === match.team2 ? 'rgba(0, 255, 135, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: match.winner === match.team2 ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                border: match.winner === match.team2 ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {teams[match.team2]?.name || match.team2}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
 
@@ -734,6 +1126,83 @@ export default function AdminPanel({
                           <input type="checkbox" checked={!!match.went_to_penalties} onChange={(e) => onRealKnockoutPenaltiesChange('final', match.id, e.target.checked)} style={{ accentColor: 'var(--color-accent)', cursor: 'pointer' }} />
                           🥅 Fue a Penales (+1 pto si acertaron ganador)
                         </label>
+                      )}
+                      {isSuperAdmin && match.team1 && match.team2 && match.went_to_penalties && (
+                        <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>Goles Penales:</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            style={{
+                              width: '35px',
+                              textAlign: 'center',
+                              background: 'rgba(15, 23, 42, 0.7)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '4px',
+                              color: 'var(--text-primary)',
+                              fontSize: '0.75rem',
+                              padding: '0.15rem'
+                            }}
+                            value={match.team1PenScore || ''}
+                            onChange={(e) => handleKnockoutPenScoreInput('final', match.id, 'team1PenScore', e.target.value)}
+                            maxLength={2}
+                          />
+                          <span style={{ color: 'var(--text-muted)' }}>vs</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            style={{
+                              width: '35px',
+                              textAlign: 'center',
+                              background: 'rgba(15, 23, 42, 0.7)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '4px',
+                              color: 'var(--text-primary)',
+                              fontSize: '0.75rem',
+                              padding: '0.15rem'
+                            }}
+                            value={match.team2PenScore || ''}
+                            onChange={(e) => handleKnockoutPenScoreInput('final', match.id, 'team2PenScore', e.target.value)}
+                            maxLength={2}
+                          />
+                        </div>
+                      )}
+                      {isSuperAdmin && match.team1 && match.team2 && match.team1Score !== '' && match.team2Score !== '' && parseInt(match.team1Score) === parseInt(match.team2Score) && (
+                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.5rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>🏆 Ganador de Penales:</span>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              onClick={() => onRealKnockoutWinnerChange('final', match.id, match.team1)}
+                              style={{
+                                flex: 1,
+                                padding: '0.25rem',
+                                fontSize: '0.75rem',
+                                background: match.winner === match.team1 ? 'rgba(0, 255, 135, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: match.winner === match.team1 ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                border: match.winner === match.team1 ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {teams[match.team1]?.name || match.team1}
+                            </button>
+                            <button
+                              onClick={() => onRealKnockoutWinnerChange('final', match.id, match.team2)}
+                              style={{
+                                flex: 1,
+                                padding: '0.25rem',
+                                fontSize: '0.75rem',
+                                background: match.winner === match.team2 ? 'rgba(0, 255, 135, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: match.winner === match.team2 ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                border: match.winner === match.team2 ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {teams[match.team2]?.name || match.team2}
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   ))}

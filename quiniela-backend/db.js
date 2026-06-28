@@ -174,6 +174,137 @@ const initDatabase = async () => {
       console.log('✔️ Registro inicial insertado en "real_results".');
     }
 
+    // 5. Migración automática para corregir emparejamientos y fechas de eliminatorias (16vos, Octavos, Cuartos, Semis, Tercero, Final)
+    try {
+      const resultsRes = await client.query('SELECT id, knockout_results FROM real_results ORDER BY id DESC LIMIT 1');
+      if (resultsRes.rows.length > 0) {
+        const rowId = resultsRes.rows[0].id;
+        const ko = resultsRes.rows[0].knockout_results || {};
+        let changed = false;
+
+        const correctR32 = {
+          'R32-1': { team1: 'RSA', team2: 'CAN', kickoff: '2026-06-28T19:00:00.000Z' },
+          'R32-2': { team1: 'NED', team2: 'MAR', kickoff: '2026-06-30T01:00:00.000Z' },
+          'R32-3': { team1: 'GER', team2: 'PAR', kickoff: '2026-06-29T20:30:00.000Z' },
+          'R32-4': { team1: 'FRA', team2: 'SWE', kickoff: '2026-06-30T21:00:00.000Z' },
+          'R32-5': { team1: 'BEL', team2: 'SEN', kickoff: '2026-07-01T20:00:00.000Z' },
+          'R32-6': { team1: 'USA', team2: 'BIH', kickoff: '2026-07-02T00:00:00.000Z' },
+          'R32-7': { team1: 'ESP', team2: 'AUT', kickoff: '2026-07-02T19:00:00.000Z' },
+          'R32-8': { team1: 'POR', team2: 'CRO', kickoff: '2026-07-02T23:00:00.000Z' },
+          'R32-9': { team1: 'BRA', team2: 'JPN', kickoff: '2026-06-29T17:00:00.000Z' },
+          'R32-10': { team1: 'CIV', team2: 'NOR', kickoff: '2026-06-30T17:00:00.000Z' },
+          'R32-11': { team1: 'MEX', team2: 'ECU', kickoff: '2026-07-01T01:00:00.000Z' },
+          'R32-12': { team1: 'ENG', team2: 'COD', kickoff: '2026-07-01T16:00:00.000Z' },
+          'R32-13': { team1: 'SUI', team2: 'ALG', kickoff: '2026-07-03T03:00:00.000Z' },
+          'R32-14': { team1: 'COL', team2: 'GHA', kickoff: '2026-07-04T01:30:00.000Z' },
+          'R32-15': { team1: 'AUS', team2: 'EGY', kickoff: '2026-07-03T18:00:00.000Z' },
+          'R32-16': { team1: 'ARG', team2: 'CPV', kickoff: '2026-07-03T22:00:00.000Z' }
+        };
+
+        const correctR16 = {
+          'R16-1': '2026-07-04T17:00:00.000Z',
+          'R16-2': '2026-07-04T21:00:00.000Z',
+          'R16-3': '2026-07-05T20:00:00.000Z',
+          'R16-4': '2026-07-06T00:00:00.000Z',
+          'R16-5': '2026-07-07T00:00:00.000Z',
+          'R16-6': '2026-07-06T19:00:00.000Z',
+          'R16-7': '2026-07-07T20:00:00.000Z',
+          'R16-8': '2026-07-07T16:00:00.000Z'
+        };
+
+        const correctQF = {
+          'QF-1': '2026-07-09T20:00:00.000Z',
+          'QF-2': '2026-07-10T19:00:00.000Z',
+          'QF-3': '2026-07-11T21:00:00.000Z',
+          'QF-4': '2026-07-12T01:00:00.000Z'
+        };
+
+        const correctSF = {
+          'SF-1': '2026-07-14T19:00:00.000Z',
+          'SF-2': '2026-07-15T19:00:00.000Z'
+        };
+
+        const correctTP = '2026-07-18T19:00:00.000Z';
+        const correctF = '2026-07-19T19:00:00.000Z';
+
+        if (ko.roundOf32) {
+          ko.roundOf32 = ko.roundOf32.map(match => {
+            const correct = correctR32[match.id];
+            if (correct && (match.team1 !== correct.team1 || match.team2 !== correct.team2 || match.kickoff !== correct.kickoff)) {
+              changed = true;
+              return { ...match, team1: correct.team1, team2: correct.team2, kickoff: correct.kickoff };
+            }
+            return match;
+          });
+        }
+
+        if (ko.roundOf16) {
+          ko.roundOf16 = ko.roundOf16.map(match => {
+            const correctKickoff = correctR16[match.id];
+            if (correctKickoff && match.kickoff !== correctKickoff) {
+              changed = true;
+              return { ...match, kickoff: correctKickoff };
+            }
+            return match;
+          });
+        }
+
+        if (ko.quarterfinals) {
+          ko.quarterfinals = ko.quarterfinals.map(match => {
+            const correctKickoff = correctQF[match.id];
+            if (correctKickoff && match.kickoff !== correctKickoff) {
+              changed = true;
+              return { ...match, kickoff: correctKickoff };
+            }
+            return match;
+          });
+        }
+
+        if (ko.semifinals) {
+          ko.semifinals = ko.semifinals.map(match => {
+            const correctKickoff = correctSF[match.id];
+            if (correctKickoff && match.kickoff !== correctKickoff) {
+              changed = true;
+              return { ...match, kickoff: correctKickoff };
+            }
+            return match;
+          });
+        }
+
+        if (ko.thirdPlace) {
+          ko.thirdPlace = ko.thirdPlace.map(match => {
+            if (match.id === 'TP-1' && match.kickoff !== correctTP) {
+              changed = true;
+              return { ...match, kickoff: correctTP };
+            }
+            return match;
+          });
+        }
+
+        if (ko.final) {
+          ko.final = ko.final.map(match => {
+            if (match.id === 'F-1' && match.kickoff !== correctF) {
+              changed = true;
+              return { ...match, kickoff: correctF };
+            }
+            return match;
+          });
+        }
+
+        if (changed) {
+          await client.query(
+            'UPDATE real_results SET knockout_results = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            [JSON.stringify(ko), rowId]
+          );
+          console.log(`✔️ Migración de eliminatorias completada para el registro ID ${rowId}.`);
+        } else {
+          console.log('✔️ Eliminatorias ya sincronizadas en base de datos.');
+        }
+      }
+    } catch (migError) {
+      console.warn('⚠️ No se pudo completar la migración de eliminatorias en real_results:', migError.message);
+    }
+
     console.log('🚀 Base de datos PostgreSQL inicializada con éxito.');
   } catch (error) {
     console.error('❌ Error inicializando la base de datos:', error.message);
