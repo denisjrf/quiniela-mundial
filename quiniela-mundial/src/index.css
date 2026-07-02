@@ -634,12 +634,8 @@ header {
   justify-content: space-between;
   padding: 0.3rem 0.4rem;
   border-radius: var(--radius-sm);
-  cursor: pointer;
+  cursor: default;
   transition: var(--transition-smooth);
-}
-
-.bracket-team-row:hover {
-  background: rgba(255, 255, 255, 0.03);
 }
 
 .bracket-team-row.predicted-winner {

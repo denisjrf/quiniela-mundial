@@ -370,21 +370,28 @@ export default function App() {
         });
       }
 
-      // Sincronizar los equipos de 16vos con los equipos configurados por el administrador
-      if (mergedRealKnockout.roundOf32 && mergedKnockout.roundOf32) {
-        mergedKnockout.roundOf32 = mergedKnockout.roundOf32.map(match => {
-          const realMatch = mergedRealKnockout.roundOf32.find(rm => rm.id === match.id);
-          return {
-            ...match,
-            team1: realMatch ? realMatch.team1 : null,
-            team2: realMatch ? realMatch.team2 : null
-          };
-        });
-      }
+      // Sincronizar los equipos de todas las rondas con los oficiales reales
+      const roundsKeys = ['roundOf32', 'roundOf16', 'quarterfinals', 'semifinals', 'thirdPlace', 'final'];
+      roundsKeys.forEach(roundKey => {
+        if (mergedRealKnockout[roundKey] && mergedKnockout[roundKey]) {
+          mergedKnockout[roundKey] = mergedKnockout[roundKey].map(match => {
+            const realMatch = mergedRealKnockout[roundKey].find(rm => rm.id === match.id);
+            const t1 = realMatch ? realMatch.team1 : null;
+            const t2 = realMatch ? realMatch.team2 : null;
+            const teamsChanged = match.team1 !== t1 || match.team2 !== t2;
+            return {
+              ...match,
+              team1: t1,
+              team2: t2,
+              team1Score: teamsChanged ? '' : match.team1Score,
+              team2Score: teamsChanged ? '' : match.team2Score,
+              winner: teamsChanged ? null : match.winner
+            };
+          });
+        }
+      });
 
-      // Propagar ganadores
-      const fullyPropagated = propagateKnockouts(mergedKnockout);
-      setKnockoutStage(fullyPropagated);
+      setKnockoutStage(mergedKnockout);
 
       // B. Cargar la tabla de posiciones general
       const lbRes = await fetch(`${API_BASE_URL}/leaderboard`, {
@@ -428,6 +435,38 @@ export default function App() {
   useEffect(() => {
     fetchData();
   }, [token]);
+
+  // Sincronizar automáticamente los equipos de la quiniela del usuario con el cuadro real oficial
+  useEffect(() => {
+    if (realKnockoutStage && Object.keys(realKnockoutStage).length > 0) {
+      setKnockoutStage(prevKnockout => {
+        const updated = { ...prevKnockout };
+        let changed = false;
+        Object.keys(realKnockoutStage).forEach(roundKey => {
+          if (updated[roundKey]) {
+            updated[roundKey] = updated[roundKey].map(match => {
+              const realMatch = realKnockoutStage[roundKey].find(rm => rm.id === match.id);
+              const t1 = realMatch ? realMatch.team1 : null;
+              const t2 = realMatch ? realMatch.team2 : null;
+              if (match.team1 !== t1 || match.team2 !== t2) {
+                changed = true;
+                return {
+                  ...match,
+                  team1: t1,
+                  team2: t2,
+                  team1Score: '',
+                  team2Score: '',
+                  winner: null
+                };
+              }
+              return match;
+            });
+          }
+        });
+        return changed ? updated : prevKnockout;
+      });
+    }
+  }, [realKnockoutStage]);
 
   // --- 2. MANEJO DE INICIO DE SESIÓN Y REGISTRO ---
   const handleAuthSubmit = async (e) => {
@@ -699,6 +738,12 @@ export default function App() {
           if (!isNaN(g1) && !isNaN(g2)) {
             if (g1 > g2) nextMatch.winner = nextMatch.team1;
             else if (g1 < g2) nextMatch.winner = nextMatch.team2;
+            else {
+              // Si es empate y el ganador actual no es ni team1 ni team2, poner null
+              if (nextMatch.winner !== nextMatch.team1 && nextMatch.winner !== nextMatch.team2) {
+                nextMatch.winner = null;
+              }
+            }
           }
         } else {
           nextMatch.winner = null;
@@ -708,12 +753,10 @@ export default function App() {
       return m;
     });
 
-    const updatedKnockout = propagateKnockouts({
+    setKnockoutStage({
       ...knockoutStage,
       [round]: updatedRound
     });
-
-    setKnockoutStage(updatedKnockout);
     setUnsavedChanges(true);
   };
 
@@ -724,12 +767,10 @@ export default function App() {
       return m;
     });
 
-    const updatedKnockout = propagateKnockouts({
+    setKnockoutStage({
       ...knockoutStage,
       [round]: updatedRound
     });
-
-    setKnockoutStage(updatedKnockout);
     setUnsavedChanges(true);
   };
 
@@ -848,21 +889,6 @@ export default function App() {
 
     const updatedKnockout = propagateKnockouts({ ...realKnockoutStage, [round]: updatedRound });
     setRealKnockoutStage(updatedKnockout);
-
-    if (round === 'roundOf32') {
-      setKnockoutStage(prevKnockout => {
-        const updatedUserRoundOf32 = prevKnockout.roundOf32.map(match => {
-          const realMatch = updatedKnockout.roundOf32.find(rm => rm.id === match.id);
-          return {
-            ...match,
-            team1: realMatch ? realMatch.team1 : null,
-            team2: realMatch ? realMatch.team2 : null
-          };
-        });
-        return propagateKnockouts({ ...prevKnockout, roundOf32: updatedUserRoundOf32 });
-      });
-    }
-
     saveRealResultsToServer(realGroupMatches, updatedKnockout);
   };
 

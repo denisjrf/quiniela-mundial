@@ -67,7 +67,7 @@ export default function KnockoutStage({
         <div>
           <h2 className="gradient-text" style={{ fontWeight: 800 }}>Fase de Eliminatorias</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Completa la fase de grupos primero. Luego, ingresa marcadores o haz **clic sobre un equipo** para avanzar a la siguiente ronda.
+            Ingresa tus marcadores pronosticados para cada partido de la fase eliminatoria.
           </p>
         </div>
         {!groupWinnersReady && (
@@ -96,14 +96,11 @@ export default function KnockoutStage({
                   <div key={match.id} className={`bracket-match-card ${locked ? 'locked' : ''}`}>
                     <div className="bracket-match-header">
                       <span>{match.date} {locked && '🔒'}</span>
-                      {match.team1Score === match.team2Score && match.team1Score !== '' && !locked && (
-                        <span style={{ color: 'var(--color-accent)' }}>Clic en ganador</span>
-                      )}
+
                     </div>
                     {/* Equipo 1 */}
                     <div 
                       className={`bracket-team-row ${isWinner1 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
-                      onClick={() => handleWinnerClick('roundOf32', match, match.team1)}
                     >
                       {getTeamName(match.team1, p1)}
                       <input
@@ -120,7 +117,6 @@ export default function KnockoutStage({
                     {/* Equipo 2 */}
                     <div 
                       className={`bracket-team-row ${isWinner2 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
-                      onClick={() => handleWinnerClick('roundOf32', match, match.team2)}
                     >
                       {getTeamName(match.team2, p2)}
                       <input
@@ -153,14 +149,11 @@ export default function KnockoutStage({
                   <div key={match.id} className={`bracket-match-card ${locked ? 'locked' : ''}`}>
                     <div className="bracket-match-header">
                       <span>{match.date} {locked && '🔒'}</span>
-                      {match.team1Score === match.team2Score && match.team1Score !== '' && !locked && (
-                        <span style={{ color: 'var(--color-accent)' }}>Hacer clic en ganador</span>
-                      )}
+
                     </div>
                     {/* Equipo 1 */}
                     <div 
                       className={`bracket-team-row ${isWinner1 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
-                      onClick={() => handleWinnerClick('roundOf16', match, match.team1)}
                     >
                       {getTeamName(match.team1, 'Ganador 16vos')}
                       <input
@@ -177,7 +170,6 @@ export default function KnockoutStage({
                     {/* Equipo 2 */}
                     <div 
                       className={`bracket-team-row ${isWinner2 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
-                      onClick={() => handleWinnerClick('roundOf16', match, match.team2)}
                     >
                       {getTeamName(match.team2, 'Ganador 16vos')}
                       <input
@@ -216,7 +208,6 @@ export default function KnockoutStage({
                     </div>
                     <div 
                       className={`bracket-team-row ${isWinner1 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
-                      onClick={() => handleWinnerClick('quarterfinals', match, match.team1)}
                     >
                       {getTeamName(match.team1, 'Ganador Octavos')}
                       <input
@@ -232,7 +223,6 @@ export default function KnockoutStage({
                     </div>
                     <div 
                       className={`bracket-team-row ${isWinner2 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
-                      onClick={() => handleWinnerClick('quarterfinals', match, match.team2)}
                     >
                       {getTeamName(match.team2, 'Ganador Octavos')}
                       <input
@@ -271,7 +261,6 @@ export default function KnockoutStage({
                     </div>
                     <div 
                       className={`bracket-team-row ${isWinner1 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
-                      onClick={() => handleWinnerClick('semifinals', match, match.team1)}
                     >
                       {getTeamName(match.team1, 'Ganador Cuartos')}
                       <input
@@ -287,7 +276,6 @@ export default function KnockoutStage({
                     </div>
                     <div 
                       className={`bracket-team-row ${isWinner2 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
-                      onClick={() => handleWinnerClick('semifinals', match, match.team2)}
                     >
                       {getTeamName(match.team2, 'Ganador Cuartos')}
                       <input
@@ -324,7 +312,6 @@ export default function KnockoutStage({
                     </div>
                     <div 
                       className={`bracket-team-row ${isWinner1 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
-                      onClick={() => handleWinnerClick('thirdPlace', match, match.team1)}
                     >
                       {getTeamName(match.team1, 'Perdedor Semis')}
                       <input
@@ -340,7 +327,6 @@ export default function KnockoutStage({
                     </div>
                     <div 
                       className={`bracket-team-row ${isWinner2 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
-                      onClick={() => handleWinnerClick('thirdPlace', match, match.team2)}
                     >
                       {getTeamName(match.team2, 'Perdedor Semis')}
                       <input
@@ -374,7 +360,6 @@ export default function KnockoutStage({
                     </div>
                     <div 
                       className={`bracket-team-row ${isWinner1 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
-                      onClick={() => handleWinnerClick('final', match, match.team1)}
                     >
                       {getTeamName(match.team1, 'Finalista')}
                       <input
@@ -390,7 +375,6 @@ export default function KnockoutStage({
                     </div>
                     <div 
                       className={`bracket-team-row ${isWinner2 ? 'predicted-winner' : ''} ${locked ? 'locked' : ''}`}
-                      onClick={() => handleWinnerClick('final', match, match.team2)}
                     >
                       {getTeamName(match.team2, 'Finalista')}
                       <input
